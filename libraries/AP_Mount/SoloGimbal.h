@@ -6,7 +6,8 @@
 * Author:  Arthur Benemann, Paul Riseborough;               *
 *                                                           *
 ************************************************************/
-#pragma once
+#ifndef __SOLOGIMBAL_H__
+#define __SOLOGIMBAL_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_AHRS/AP_AHRS.h>
@@ -47,13 +48,12 @@ public:
         _state(GIMBAL_STATE_NOT_PRESENT),
         _yaw_rate_ff_ef_filt(0.0f),
         _vehicle_yaw_rate_ef_filt(0.0f),
+        _lockedToBody(false),
+        _vehicle_delta_angles(),
         _vehicle_to_gimbal_quat(),
         _vehicle_to_gimbal_quat_filt(),
         _filtered_joint_angles(),
-        _last_report_msg_ms(0),
         _max_torque(5000.0f),
-        _ang_vel_mag_filt(0),
-        _lockedToBody(false),
         _log_dt(0),
         _log_del_ang(),
         _log_del_vel()
@@ -110,9 +110,6 @@ private:
     bool joints_near_limits();
 
     // private member variables
-    SoloGimbalEKF            _ekf;      // state of small EKF for gimbal
-    const AP_AHRS_NavEKF    &_ahrs;     //  Main EKF
-
     gimbal_state_t _state;
 
     struct {
@@ -147,6 +144,8 @@ private:
 
     bool _lockedToBody;
 
+    SoloGimbalEKF    _ekf;                   // state of small EKF for gimbal
+    const AP_AHRS_NavEKF    &_ahrs;     //  Main EKF
     SoloGimbal_Parameters _gimbalParams;
 
     AccelCalibrator _calibrator;
@@ -157,3 +156,5 @@ private:
 };
 
 #endif // AP_AHRS_NAVEKF_AVAILABLE
+
+#endif // __AP_MOUNT_H__

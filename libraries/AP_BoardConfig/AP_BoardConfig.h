@@ -1,5 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_BOARDCONFIG_H__
+#define __AP_BOARDCONFIG_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
@@ -26,7 +28,7 @@ private:
     AP_Int8 _ser1_rtscts;
     AP_Int8 _ser2_rtscts;
     AP_Int8 _safety_enable;
-    AP_Int8 _sbus_out_rate;
+    AP_Int8 _sbus_out_enable;
 #ifndef CONFIG_ARCH_BOARD_PX4FMU_V1
     AP_Int8 _can_enable;
 #endif
@@ -35,3 +37,7 @@ private:
 
 #endif
 };
+
+#endif // __AP_BOARDCONFIG_H__
+
+

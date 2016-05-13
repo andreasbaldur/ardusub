@@ -6,7 +6,7 @@
    Authors:    Doug Weibel, Jose Julio, Jordi Munoz, Jason Short, Randy Mackay, Pat Hickey, John Arne Birkeland, Olivier Adler, Amilcar Lucas, Gregory Fletcher, Paul Riseborough, Brandon Jones, Jon Challinger
    Thanks to:  Chris Anderson, Michael Oborne, Paul Mather, Bill Premerlani, James Cohen, JB from rotorFX, Automatik, Fefenin, Peter Meister, Remzibi, Yury Smirnov, Sandro Benigno, Max Levine, Roberto Navoni, Lorenz Meier, Yury MonZon
 
-   Please contribute your ideas! See http://dev.ardupilot.org for details
+   Please contribute your ideas! See http://dev.ardupilot.com for details
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,57 +34,56 @@
  */
 const AP_Scheduler::Task Plane::scheduler_tasks[] = {
                            // Units:   Hz      us
-    SCHED_TASK(ahrs_update,           400,    400),
-    SCHED_TASK(read_radio,             50,    100),
-    SCHED_TASK(check_short_failsafe,   50,    100),
-    SCHED_TASK(update_speed_height,    50,    200),
-    SCHED_TASK(update_flight_mode,    400,    100),
-    SCHED_TASK(stabilize,             400,    100),
-    SCHED_TASK(set_servos,            400,    100),
-    SCHED_TASK(read_control_switch,     7,    100),
-    SCHED_TASK(gcs_retry_deferred,     50,    500),
-    SCHED_TASK(update_GPS_50Hz,        50,    300),
-    SCHED_TASK(update_GPS_10Hz,        10,    400),
-    SCHED_TASK(navigate,               10,    150),
-    SCHED_TASK(update_compass,         10,    200),
-    SCHED_TASK(read_airspeed,          10,    100),
-    SCHED_TASK(update_alt,             10,    200),
-    SCHED_TASK(adjust_altitude_target, 10,    200),
-    SCHED_TASK(obc_fs_check,           10,    100),
-    SCHED_TASK(gcs_update,             50,    500),
-    SCHED_TASK(gcs_data_stream_send,   50,    500),
-    SCHED_TASK(update_events,          50,    150),
-    SCHED_TASK(check_usb_mux,          10,    100),
-    SCHED_TASK(read_battery,           10,    300),
-    SCHED_TASK(compass_accumulate,     50,    200),
-    SCHED_TASK(barometer_accumulate,   50,    150),
+    SCHED_TASK(read_radio,             50,    700),
+    SCHED_TASK(check_short_failsafe,   50,   1000),
+    SCHED_TASK(ahrs_update,           400,   6400),
+    SCHED_TASK(update_speed_height,    50,   1600),
+    SCHED_TASK(update_flight_mode,    400,   1400),
+    SCHED_TASK(stabilize,             400,   3500),
+    SCHED_TASK(set_servos,            400,   1600),
+    SCHED_TASK(read_control_switch,     7,   1000),
+    SCHED_TASK(gcs_retry_deferred,     50,   1000),
+    SCHED_TASK(update_GPS_50Hz,        50,   2500),
+    SCHED_TASK(update_GPS_10Hz,        10,   2500),
+    SCHED_TASK(navigate,               10,   3000),
+    SCHED_TASK(update_compass,         10,   1200),
+    SCHED_TASK(read_airspeed,          10,   1200),
+    SCHED_TASK(update_alt,             10,   3400),
+    SCHED_TASK(adjust_altitude_target, 10,   1000),
+    SCHED_TASK(obc_fs_check,           10,   1000),
+    SCHED_TASK(gcs_update,             50,   1700),
+    SCHED_TASK(gcs_data_stream_send,   50,   3000),
+    SCHED_TASK(update_events,          50,   1500),
+    SCHED_TASK(check_usb_mux,          10,    300),
+    SCHED_TASK(read_battery,           10,   1000),
+    SCHED_TASK(compass_accumulate,     50,   1500),
+    SCHED_TASK(barometer_accumulate,   50,    900),
     SCHED_TASK(update_notify,          50,    300),
-    SCHED_TASK(read_rangefinder,       50,    100),
-    SCHED_TASK(compass_cal_update,     50,    50),
-    SCHED_TASK(accel_cal_update,       10,    50),
+    SCHED_TASK(read_rangefinder,       50,    500),
+    SCHED_TASK(compass_cal_update,     50,    100),
+    SCHED_TASK(accel_cal_update,       10,    100),
 #if OPTFLOW == ENABLED
-    SCHED_TASK(update_optical_flow,    50,    50),
+    SCHED_TASK(update_optical_flow,    50,    500),
 #endif
-    SCHED_TASK(one_second_loop,         1,    400),
-    SCHED_TASK(check_long_failsafe,     3,    400),
-    SCHED_TASK(read_receiver_rssi,     10,    100),
-    SCHED_TASK(rpm_update,             10,    100),
-    SCHED_TASK(airspeed_ratio_update,   1,    100),
-    SCHED_TASK(update_mount,           50,    100),
-    SCHED_TASK(update_trigger,         50,    100),
-    SCHED_TASK(log_perf_info,         0.2,    100),
-    SCHED_TASK(compass_save,          0.1,    200),
-    SCHED_TASK(Log_Write_Fast,         25,    300),
-    SCHED_TASK(update_logging1,        10,    300),
-    SCHED_TASK(update_logging2,        10,    300),
-    SCHED_TASK(parachute_check,        10,    200),
+    SCHED_TASK(one_second_loop,         1,   1000),
+    SCHED_TASK(check_long_failsafe,     3,   1000),
+    SCHED_TASK(read_receiver_rssi,     10,   1000),
+    SCHED_TASK(rpm_update,             10,    200),
+    SCHED_TASK(airspeed_ratio_update,   1,   1000),
+    SCHED_TASK(update_mount,           50,   1500),
+    SCHED_TASK(update_trigger,         50,   1500),
+    SCHED_TASK(log_perf_info,         0.1,   1000),
+    SCHED_TASK(compass_save,        0.016,   2500),
+    SCHED_TASK(update_logging1,        10,   1700),
+    SCHED_TASK(update_logging2,        10,   1700),
+    SCHED_TASK(parachute_check,        10,    500),
 #if FRSKY_TELEM_ENABLED == ENABLED
     SCHED_TASK(frsky_telemetry_send,    5,    100),
 #endif
-    SCHED_TASK(terrain_update,         10,    200),
+    SCHED_TASK(terrain_update,         10,    500),
     SCHED_TASK(update_is_flying_5Hz,    5,    100),
-    SCHED_TASK(dataflash_periodic,     50,    400),
-    SCHED_TASK(adsb_update,             1,    400),
+    SCHED_TASK(dataflash_periodic,     50,    300),
+    SCHED_TASK(adsb_update,             1,    500),
 };
 
 void Plane::setup() 
@@ -108,30 +107,24 @@ void Plane::setup()
 
 void Plane::loop()
 {
-    uint32_t loop_us = 1000000UL / scheduler.get_loop_rate_hz();
-
     // wait for an INS sample
     ins.wait_for_sample();
 
     uint32_t timer = micros();
 
-    perf.delta_us_fast_loop  = timer - perf.fast_loopTimer_us;
-    G_Dt = perf.delta_us_fast_loop * 1.0e-6f;
+    delta_us_fast_loop  = timer - fast_loopTimer_us;
+    G_Dt                = delta_us_fast_loop * 1.0e-6f;
 
-    if (perf.delta_us_fast_loop > loop_us + 500) {
-        perf.num_long++;
+    if (delta_us_fast_loop > G_Dt_max && fast_loopTimer_us != 0) {
+        G_Dt_max = delta_us_fast_loop;
     }
 
-    if (perf.delta_us_fast_loop > perf.G_Dt_max && perf.fast_loopTimer_us != 0) {
-        perf.G_Dt_max = perf.delta_us_fast_loop;
+    if (delta_us_fast_loop < G_Dt_min || G_Dt_min == 0) {
+        G_Dt_min = delta_us_fast_loop;
     }
+    fast_loopTimer_us   = timer;
 
-    if (perf.delta_us_fast_loop < perf.G_Dt_min || perf.G_Dt_min == 0) {
-        perf.G_Dt_min = perf.delta_us_fast_loop;
-    }
-    perf.fast_loopTimer_us = timer;
-
-    perf.mainLoop_count++;
+    mainLoop_count++;
 
     // tell the scheduler one tick has passed
     scheduler.tick();
@@ -141,7 +134,11 @@ void Plane::loop()
     // in multiples of the main loop tick. So if they don't run on
     // the first call to the scheduler they won't run on a later
     // call until scheduler.tick() is called again
-    scheduler.run(loop_us);
+    uint32_t remaining = (timer + 20000) - micros();
+    if (remaining > 19500) {
+        remaining = 19500;
+    }
+    scheduler.run(remaining);
 }
 
 // update AHRS system
@@ -159,8 +156,13 @@ void Plane::ahrs_update()
 
     ahrs.update();
 
+    if (should_log(MASK_LOG_ATTITUDE_FAST)) {
+        Log_Write_Attitude();
+    }
+
     if (should_log(MASK_LOG_IMU)) {
         Log_Write_IMU();
+        DataFlash.Log_Write_IMUDT(ins);
     }
 
     // calculate a scaled roll limit based on current pitch
@@ -186,7 +188,7 @@ void Plane::update_speed_height(void)
 	    // Call TECS 50Hz update. Note that we call this regardless of
 	    // throttle suppressed, as this needs to be running for
 	    // takeoff detection
-        SpdHgt_Controller->update_50hz();
+        SpdHgt_Controller->update_50hz(tecs_hgt_afe());
     }
 }
 
@@ -225,7 +227,7 @@ void Plane::update_compass(void)
     if (g.compass_enabled && compass.read()) {
         ahrs.set_compass(&compass);
         compass.learn_offsets();
-        if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
+        if (should_log(MASK_LOG_COMPASS)) {
             DataFlash.Log_Write_Compass(compass);
         }
     } else {
@@ -290,7 +292,7 @@ void Plane::obc_fs_check(void)
 {
 #if OBC_FAILSAFE == ENABLED
     // perform OBC failsafe checks
-    obc.check(OBC_MODE(control_mode), failsafe.last_heartbeat_ms, geofence_breached(), failsafe.AFS_last_valid_rc_ms);
+    obc.check(OBC_MODE(control_mode), failsafe.last_heartbeat_ms, geofence_breached(), failsafe.last_valid_rc_ms);
 #endif
 }
 
@@ -305,6 +307,9 @@ void Plane::update_aux(void)
 
 void Plane::one_second_loop()
 {
+    if (should_log(MASK_LOG_CURRENT))
+        Log_Write_Current();
+
     // send a heartbeat
     gcs_send_message(MSG_HEARTBEAT);
 
@@ -336,29 +341,23 @@ void Plane::one_second_loop()
 void Plane::log_perf_info()
 {
     if (scheduler.debug() != 0) {
-        gcs_send_text_fmt(MAV_SEVERITY_INFO, "PERF: %u/%u Dt=%u/%u Log=%u\n",
-                          (unsigned)perf.num_long,
-                          (unsigned)perf.mainLoop_count,
-                          (unsigned)perf.G_Dt_max,
-                          (unsigned)perf.G_Dt_min,
-                          (unsigned)(DataFlash.num_dropped() - perf.last_log_dropped));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "G_Dt_max=%lu G_Dt_min=%lu\n",
+                          (unsigned long)G_Dt_max, 
+                          (unsigned long)G_Dt_min);
     }
 
     if (should_log(MASK_LOG_PM)) {
         Log_Write_Performance();
     }
 
+    G_Dt_max = 0;
+    G_Dt_min = 0;
     resetPerfData();
 }
 
 void Plane::compass_save()
 {
-    if (g.compass_enabled &&
-        compass.get_learn_type() >= Compass::LEARN_INTERNAL &&
-        !hal.util->get_soft_armed()) {
-        /*
-          only save offsets when disarmed
-         */
+    if (g.compass_enabled) {
         compass.save_offsets();
     }
 }
@@ -412,9 +411,6 @@ void Plane::airspeed_ratio_update(void)
  */
 void Plane::update_GPS_50Hz(void)
 {
-    // get position from AHRS
-    have_position = ahrs.get_position(current_loc);
-
     static uint32_t last_gps_reading[GPS_MAX_INSTANCES];
     gps.update();
 
@@ -433,6 +429,9 @@ void Plane::update_GPS_50Hz(void)
  */
 void Plane::update_GPS_10Hz(void)
 {
+    // get position from AHRS
+    have_position = ahrs.get_position(current_loc);
+
     static uint32_t last_gps_msg_ms;
     if (gps.last_message_time_ms() != last_gps_msg_ms && gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
         last_gps_msg_ms = gps.last_message_time_ms();
@@ -486,16 +485,14 @@ void Plane::update_GPS_10Hz(void)
  */
 void Plane::handle_auto_mode(void)
 {
-    uint16_t nav_cmd_id;
+    uint8_t nav_cmd_id;
 
-    if (mission.state() != AP_Mission::MISSION_RUNNING) {
-        // this should never be reached
-        set_mode(RTL);
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "Aircraft in auto without a running mission");
-        return;
+    // we should be either running a mission or RTLing home
+    if (mission.state() == AP_Mission::MISSION_RUNNING) {
+        nav_cmd_id = mission.get_current_nav_cmd().id;
+    }else{
+        nav_cmd_id = auto_rtl_command.id;
     }
-
-    nav_cmd_id = mission.get_current_nav_cmd().id;
 
     if (quadplane.in_vtol_auto()) {
         quadplane.control_auto(next_WP_loc);
@@ -518,7 +515,7 @@ void Plane::handle_auto_mode(void)
         if (auto_state.land_complete) {
             // we are in the final stage of a landing - force
             // zero throttle
-            channel_throttle->set_servo_out(0);
+            channel_throttle->servo_out = 0;
         }
     } else {
         // we are doing normal AUTO flight, the special cases
@@ -540,7 +537,7 @@ void Plane::handle_auto_mode(void)
 void Plane::update_flight_mode(void)
 {
     enum FlightMode effective_mode = control_mode;
-    if (control_mode == AUTO && g.auto_fbw_steer == 42) {
+    if (control_mode == AUTO && g.auto_fbw_steer) {
         effective_mode = FLY_BY_WIRE_A;
     }
 
@@ -550,7 +547,10 @@ void Plane::update_flight_mode(void)
     }
 
     // ensure we are fly-forward
-    if (quadplane.in_vtol_mode()) {
+    if (effective_mode == QSTABILIZE ||
+        effective_mode == QHOVER ||
+        effective_mode == QLOITER ||
+        quadplane.in_vtol_auto()) {
         ahrs.set_fly_forward(false);
     } else {
         ahrs.set_fly_forward(true);
@@ -562,15 +562,9 @@ void Plane::update_flight_mode(void)
         handle_auto_mode();
         break;
 
-    case GUIDED:
-        if (auto_state.vtol_loiter && quadplane.available()) {
-            quadplane.guided_update();
-            break;
-        }
-        // fall through
-
     case RTL:
     case LOITER:
+    case GUIDED:
         calc_nav_roll();
         calc_nav_pitch();
         calc_throttle();
@@ -644,7 +638,7 @@ void Plane::update_flight_mode(void)
             // FBWA failsafe glide
             nav_roll_cd = 0;
             nav_pitch_cd = 0;
-            channel_throttle->set_servo_out(0);
+            channel_throttle->servo_out = 0;
         }
         if (g.fbwa_tdrag_chan > 0) {
             // check for the user enabling FBWA taildrag takeoff mode
@@ -673,7 +667,7 @@ void Plane::update_flight_mode(void)
           roll when heading is locked. Heading becomes unlocked on
           any aileron or rudder input
         */
-        if ((channel_roll->get_control_in() != 0 ||
+        if ((channel_roll->control_in != 0 ||
              rudder_input != 0)) {                
             cruise_state.locked_heading = false;
             cruise_state.lock_timer_ms = 0;
@@ -709,8 +703,8 @@ void Plane::update_flight_mode(void)
     case MANUAL:
         // servo_out is for Sim control only
         // ---------------------------------
-        channel_roll->set_servo_out(channel_roll->pwm_to_angle());
-        channel_pitch->set_servo_out(channel_pitch->pwm_to_angle());
+        channel_roll->servo_out = channel_roll->pwm_to_angle();
+        channel_pitch->servo_out = channel_pitch->pwm_to_angle();
         steering_control.steering = steering_control.rudder = channel_rudder->pwm_to_angle();
         break;
         //roll: -13788.000,  pitch: -13698.000,   thr: 0.000, rud: -13742.000
@@ -718,9 +712,7 @@ void Plane::update_flight_mode(void)
 
     case QSTABILIZE:
     case QHOVER:
-    case QLOITER:
-    case QLAND:
-    case QRTL: {
+    case QLOITER: {
         // set nav_roll and nav_pitch using sticks
         nav_roll_cd  = channel_roll->norm_input() * roll_limit_cd;
         nav_roll_cd = constrain_int32(nav_roll_cd, -roll_limit_cd, roll_limit_cd);
@@ -749,19 +741,13 @@ void Plane::update_navigation()
     
     switch(control_mode) {
     case AUTO:
-        if (home_is_set != HOME_UNSET) {
-            mission.update();
-        }
+        update_commands();
         break;
             
     case RTL:
-        if (quadplane.available() && quadplane.rtl_mode == 1 &&
-            nav_controller->reached_loiter_target()) {
-            set_mode(QRTL);
-            break;
-        } else if (g.rtl_autoland == 1 &&
+        if (g.rtl_autoland == 1 &&
             !auto_state.checked_for_autoland &&
-            reached_loiter_target() && 
+            nav_controller->reached_loiter_target() && 
             labs(altitude_error_cm) < 1000) {
             // we've reached the RTL point, see if we have a landing sequence
             jump_to_landing_sequence();
@@ -779,15 +765,25 @@ void Plane::update_navigation()
             // on every loop
             auto_state.checked_for_autoland = true;
         }
-        radius = abs(g.rtl_radius);
-        if (radius > 0) {
-            loiter.direction = (g.rtl_radius < 0) ? -1 : 1;
-        }
         // fall through to LOITER
+        if (g.rtl_radius < 0) {
+            loiter.direction = -1;
+        } else {
+            loiter.direction = 1;
+        }
+        radius = abs(g.rtl_radius);
 
     case LOITER:
     case GUIDED:
-        update_loiter(radius);
+        // allow loiter direction to be changed in flight
+        if (radius == 0) {
+            if (g.loiter_radius < 0) {
+                loiter.direction = -1;
+            } else {
+                loiter.direction = 1;
+            }
+        }
+        update_loiter(abs(radius));
         break;
 
     case CRUISE:
@@ -806,8 +802,6 @@ void Plane::update_navigation()
     case QSTABILIZE:
     case QHOVER:
     case QLOITER:
-    case QLAND:
-    case QRTL:
         // nothing to do
         break;
     }
@@ -856,10 +850,6 @@ void Plane::set_flight_stage(AP_SpdHgtControl::FlightStage fs)
     
 
     flight_stage = fs;
-
-    if (should_log(MASK_LOG_MODE)) {
-        Log_Write_Status();
-    }
 }
 
 void Plane::update_alt()
@@ -887,30 +877,19 @@ void Plane::update_alt()
 
     update_flight_stage();
 
+    bool is_doing_auto_land = (control_mode == AUTO) && (mission.get_current_nav_cmd().id == MAV_CMD_NAV_LAND);
+    float distance_beyond_land_wp = 0;
+    if (is_doing_auto_land && location_passed_point(current_loc, prev_WP_loc, next_WP_loc)) {
+        distance_beyond_land_wp = get_distance(current_loc, next_WP_loc);
+    }
+
     if (auto_throttle_mode && !throttle_suppressed) {        
-
-        bool is_doing_auto_land = false;
-        float distance_beyond_land_wp = 0;
-
-        switch (flight_stage) {
-        case AP_SpdHgtControl::FLIGHT_LAND_APPROACH:
-        case AP_SpdHgtControl::FLIGHT_LAND_PREFLARE:
-        case AP_SpdHgtControl::FLIGHT_LAND_FINAL:
-            is_doing_auto_land = true;
-            if (location_passed_point(current_loc, prev_WP_loc, next_WP_loc)) {
-                distance_beyond_land_wp = get_distance(current_loc, next_WP_loc);
-            }
-            break;
-        default:
-            break;
-        }
-
         SpdHgt_Controller->update_pitch_throttle(relative_target_altitude_cm(),
                                                  target_airspeed_cm,
                                                  flight_stage,
                                                  is_doing_auto_land,
                                                  distance_beyond_land_wp,
-                                                 get_takeoff_pitch_min_cd(),
+                                                 auto_state.takeoff_pitch_cd,
                                                  throttle_nudge,
                                                  tecs_hgt_afe(),
                                                  aerodynamic_load_factor);
@@ -934,7 +913,7 @@ void Plane::update_flight_stage(void)
                 set_flight_stage(AP_SpdHgtControl::FLIGHT_TAKEOFF);
             } else if (mission.get_current_nav_cmd().id == MAV_CMD_NAV_LAND) {
 
-                if ((g.land_abort_throttle_enable && channel_throttle->get_control_in() >= 90) ||
+                if ((g.land_abort_throttle_enable && channel_throttle->control_in >= 90) ||
                         auto_state.commanded_go_around ||
                         flight_stage == AP_SpdHgtControl::FLIGHT_LAND_ABORT){
                     // abort mode is sticky, it must complete while executing NAV_LAND
@@ -944,12 +923,10 @@ void Plane::update_flight_stage(void)
                 } else if (auto_state.land_pre_flare == true) {
                     set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_PREFLARE);
                 } else if (flight_stage != AP_SpdHgtControl::FLIGHT_LAND_APPROACH) {
-                    bool heading_lined_up = abs(nav_controller->bearing_error_cd()) < 1000 && !nav_controller->data_is_stale();
-                    bool on_flight_line = abs(nav_controller->crosstrack_error() < 5) && !nav_controller->data_is_stale();
+                    float path_progress = location_path_proportion(current_loc, prev_WP_loc, next_WP_loc);
+                    bool lined_up = abs(nav_controller->bearing_error_cd()) < 1000;
                     bool below_prev_WP = current_loc.alt < prev_WP_loc.alt;
-                    if ((auto_state.wp_proportion >= 0 && heading_lined_up && on_flight_line) ||
-                        (auto_state.wp_proportion > 0.15f && heading_lined_up && below_prev_WP) ||
-                        (auto_state.wp_proportion > 0.5f)) {
+                    if ((path_progress > 0.15f && lined_up && below_prev_WP) || path_progress > 0.5f) {
                         set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_APPROACH);
                     } else {
                         set_flight_stage(AP_SpdHgtControl::FLIGHT_NORMAL);                        
@@ -961,12 +938,11 @@ void Plane::update_flight_stage(void)
                 set_flight_stage(AP_SpdHgtControl::FLIGHT_NORMAL);
             }
         } else {
-            // If not in AUTO then assume normal operation for normal TECS operation.
-            // This prevents TECS from being stuck in the wrong stage if you switch from
-            // AUTO to, say, FBWB during a landing, an aborted landing or takeoff.
             set_flight_stage(AP_SpdHgtControl::FLIGHT_NORMAL);
         }
-    } else if (quadplane.in_vtol_mode() ||
+    } else if (control_mode == QSTABILIZE ||
+               control_mode == QHOVER ||
+               control_mode == QLOITER ||
                quadplane.in_assisted_flight()) {
         set_flight_stage(AP_SpdHgtControl::FLIGHT_VTOL);
     } else {

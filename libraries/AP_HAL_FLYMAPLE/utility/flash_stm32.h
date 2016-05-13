@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __FLASH_STM32_H
+#define __FLASH_STM32_H
 
 #ifdef __cplusplus
  extern "C" {
@@ -31,3 +32,5 @@ void FLASH_Lock(void);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* __FLASH_STM32_H */

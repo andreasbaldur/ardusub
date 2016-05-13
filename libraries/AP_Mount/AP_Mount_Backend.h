@@ -18,7 +18,9 @@
   Mount driver backend class. Each supported mount type
   needs to have an object derived from this class.
  */
-#pragma once
+
+#ifndef __AP_MOUNT_BACKEND_H__
+#define __AP_MOUNT_BACKEND_H__
 
 #include <AP_Common/AP_Common.h>
 #include "AP_Mount.h"
@@ -98,3 +100,5 @@ protected:
     uint8_t     _instance;  // this instance's number
     Vector3f    _angle_ef_target_rad;   // desired earth-frame roll, tilt and vehicle-relative pan angles in radians
 };
+
+#endif // __AP_MOUNT_BACKEND_H__

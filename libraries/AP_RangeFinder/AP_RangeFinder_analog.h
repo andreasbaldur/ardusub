@@ -1,5 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_RANGEFINDER_ANALOG_H__
+#define __AP_RANGEFINDER_ANALOG_H__
 
 #include "RangeFinder.h"
 #include "RangeFinder_Backend.h"
@@ -22,3 +24,5 @@ private:
 
     AP_HAL::AnalogSource *source;
 };
+#endif // __AP_RANGEFINDER_ANALOG_H__
+

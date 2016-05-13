@@ -1,5 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+#ifndef AP_RCMAPPER_H
+#define AP_RCMAPPER_H
 
 #include <inttypes.h>
 #include <AP_Common/AP_Common.h>
@@ -28,7 +29,7 @@ public:
 	uint8_t forward() const { return _ch_forward; }
 
 	/// strafe - return input channel number for stafe input
-	uint8_t lateral() const { return _ch_lateral; }
+	uint8_t strafe() const { return _ch_strafe; }
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -39,5 +40,6 @@ private:
     AP_Int8 _ch_yaw;
     AP_Int8 _ch_throttle;
     AP_Int8 _ch_forward;
-    AP_Int8 _ch_lateral;
+    AP_Int8 _ch_strafe;
 };
+#endif

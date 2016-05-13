@@ -1,7 +1,6 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "Plane.h"
-#include "version.h"
 
 #if LOGGING_ENABLED == ENABLED
 
@@ -166,9 +165,9 @@ void Plane::Log_Write_Attitude(void)
 
     DataFlash.Log_Write_Attitude(ahrs, targets);
     if (quadplane.in_vtol_mode()) {
-        DataFlash.Log_Write_PID(LOG_PIDR_MSG, quadplane.attitude_control->get_rate_roll_pid().get_pid_info());
-        DataFlash.Log_Write_PID(LOG_PIDP_MSG, quadplane.attitude_control->get_rate_pitch_pid().get_pid_info());
-        DataFlash.Log_Write_PID(LOG_PIDY_MSG, quadplane.attitude_control->get_rate_yaw_pid().get_pid_info());
+        DataFlash.Log_Write_PID(LOG_PIDR_MSG, quadplane.pid_rate_roll.get_pid_info() );
+        DataFlash.Log_Write_PID(LOG_PIDP_MSG, quadplane.pid_rate_pitch.get_pid_info() );
+        DataFlash.Log_Write_PID(LOG_PIDY_MSG, quadplane.pid_rate_yaw.get_pid_info() );
         DataFlash.Log_Write_PID(LOG_PIDA_MSG, quadplane.pid_accel_z.get_pid_info() );
     } else {
         DataFlash.Log_Write_PID(LOG_PIDR_MSG, rollController.get_pid_info());
@@ -191,23 +190,18 @@ void Plane::Log_Write_Attitude(void)
     DataFlash.Log_Write_POS(ahrs);
 }
 
-// do logging at loop rate
-void Plane::Log_Write_Fast(void)
-{
-    if (should_log(MASK_LOG_ATTITUDE_FAST)) {
-        Log_Write_Attitude();
-    }
-}
-
 
 struct PACKED log_Performance {
     LOG_PACKET_HEADER;
     uint64_t time_us;
-    uint16_t num_long;
+    uint32_t loop_time;
     uint16_t main_loop_count;
     uint32_t g_dt_max;
-    uint32_t g_dt_min;
-    uint32_t log_dropped;
+    int16_t  gyro_drift_x;
+    int16_t  gyro_drift_y;
+    int16_t  gyro_drift_z;
+    uint8_t  i2c_lockup_count;
+    uint16_t ins_error_count;
 };
 
 // Write a performance monitoring packet. Total length : 19 bytes
@@ -216,13 +210,16 @@ void Plane::Log_Write_Performance()
     struct log_Performance pkt = {
         LOG_PACKET_HEADER_INIT(LOG_PERFORMANCE_MSG),
         time_us         : AP_HAL::micros64(),
-        num_long        : perf.num_long,
-        main_loop_count : perf.mainLoop_count,
-        g_dt_max        : perf.G_Dt_max,
-        g_dt_min        : perf.G_Dt_min,
-        log_dropped     : DataFlash.num_dropped() - perf.last_log_dropped
+        loop_time       : millis() - perf_mon_timer,
+        main_loop_count : mainLoop_count,
+        g_dt_max        : G_Dt_max,
+        gyro_drift_x    : (int16_t)(ahrs.get_gyro_drift().x * 1000),
+        gyro_drift_y    : (int16_t)(ahrs.get_gyro_drift().y * 1000),
+        gyro_drift_z    : (int16_t)(ahrs.get_gyro_drift().z * 1000),
+        i2c_lockup_count: hal.i2c->lockup_count(),
+        ins_error_count  : ins.error_count()
     };
-    DataFlash.WriteCriticalBlock(&pkt, sizeof(pkt));
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
 struct PACKED log_Startup {
@@ -240,7 +237,7 @@ void Plane::Log_Write_Startup(uint8_t type)
         startup_type    : type,
         command_total   : mission.num_commands()
     };
-    DataFlash.WriteCriticalBlock(&pkt, sizeof(pkt));
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
 struct PACKED log_Control_Tuning {
@@ -265,8 +262,8 @@ void Plane::Log_Write_Control_Tuning()
         roll            : (int16_t)ahrs.roll_sensor,
         nav_pitch_cd    : (int16_t)nav_pitch_cd,
         pitch           : (int16_t)ahrs.pitch_sensor,
-        throttle_out    : (int16_t)channel_throttle->get_servo_out(),
-        rudder_out      : (int16_t)channel_rudder->get_servo_out(),
+        throttle_out    : (int16_t)channel_throttle->servo_out,
+        rudder_out      : (int16_t)channel_rudder->servo_out,
         throttle_dem    : (int16_t)SpdHgt_Controller->get_throttle_demand()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
@@ -281,6 +278,7 @@ void Plane::Log_Write_TECS_Tuning(void)
 struct PACKED log_Nav_Tuning {
     LOG_PACKET_HEADER;
     uint64_t time_us;
+    uint16_t yaw;
     float wp_distance;
     int16_t target_bearing_cd;
     int16_t nav_bearing_cd;
@@ -289,7 +287,6 @@ struct PACKED log_Nav_Tuning {
     float   altitude;
     uint32_t groundspeed_cm;
     float   xtrack_error;
-    float   xtrack_error_i;
 };
 
 // Write a navigation tuning packet
@@ -298,6 +295,7 @@ void Plane::Log_Write_Nav_Tuning()
     struct log_Nav_Tuning pkt = {
         LOG_PACKET_HEADER_INIT(LOG_NTUN_MSG),
         time_us             : AP_HAL::micros64(),
+        yaw                 : (uint16_t)ahrs.yaw_sensor,
         wp_distance         : auto_state.wp_distance,
         target_bearing_cd   : (int16_t)nav_controller->target_bearing_cd(),
         nav_bearing_cd      : (int16_t)nav_controller->nav_bearing_cd(),
@@ -305,8 +303,7 @@ void Plane::Log_Write_Nav_Tuning()
         airspeed_cm         : (int16_t)airspeed.get_airspeed_cm(),
         altitude            : barometer.get_altitude(),
         groundspeed_cm      : (uint32_t)(gps.ground_speed()*100),
-        xtrack_error        : nav_controller->crosstrack_error(),
-        xtrack_error_i      : nav_controller->crosstrack_error_integrator()
+        xtrack_error        : nav_controller->crosstrack_error()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -332,10 +329,10 @@ void Plane::Log_Write_Status()
         ,is_flying   : is_flying()
         ,is_flying_probability : isFlyingProbability
         ,armed       : hal.util->get_soft_armed()
-        ,safety      : static_cast<uint8_t>(hal.util->safety_switch_state())
+        ,safety      : hal.util->safety_switch_state()
         ,is_crashed  : crash_state.is_crashed
         ,is_still    : plane.ins.is_still()
-        ,stage       : static_cast<uint8_t>(flight_stage)
+        ,stage       : flight_stage
         ,impact      : crash_state.impact_detected
         };
 
@@ -422,7 +419,7 @@ struct PACKED log_Arm_Disarm {
 
 void Plane::Log_Write_Current()
 {
-    DataFlash.Log_Write_Current(battery, channel_throttle->get_control_in());
+    DataFlash.Log_Write_Current(battery, channel_throttle->control_in);
 
     // also write power status
     DataFlash.Log_Write_Power();
@@ -435,14 +432,12 @@ void Plane::Log_Arm_Disarm() {
         arm_state               : arming.is_armed(),
         arm_checks              : arming.get_enabled_checks()      
     };
-    DataFlash.WriteCriticalBlock(&pkt, sizeof(pkt));
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
 void Plane::Log_Write_GPS(uint8_t instance)
 {
-    if (!ahrs.have_ekf_logging()) {
-        DataFlash.Log_Write_GPS(gps, instance);
-    }
+    DataFlash.Log_Write_GPS(gps, instance, current_loc.alt - ahrs.get_home().alt);
 }
 
 void Plane::Log_Write_IMU() 
@@ -461,9 +456,7 @@ void Plane::Log_Write_RC(void)
 
 void Plane::Log_Write_Baro(void)
 {
-    if (!ahrs.have_ekf_logging()) {
-        DataFlash.Log_Write_Baro(barometer);
-    }
+    DataFlash.Log_Write_Baro(barometer);
 }
 
 // Write a AIRSPEED packet
@@ -478,7 +471,7 @@ void Plane::Log_Write_Home_And_Origin()
 #if AP_AHRS_NAVEKF_AVAILABLE
     // log ekf origin if set
     Location ekf_orig;
-    if (ahrs.get_origin(ekf_orig)) {
+    if (ahrs.get_NavEKF_const().getOriginLLH(ekf_orig)) {
         DataFlash.Log_Write_Origin(LogOriginType::ekf_origin, ekf_orig);
     }
 #endif
@@ -489,16 +482,16 @@ void Plane::Log_Write_Home_And_Origin()
     }
 }
 
-const struct LogStructure Plane::log_structure[] = {
+static const struct LogStructure log_structure[] = {
     LOG_COMMON_STRUCTURES,
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance), 
-      "PM",  "QHHIII",  "TimeUS,NLon,NLoop,MaxT,MinT,LogDrop" },
+      "PM",  "QIHIhhhBH", "TimeUS,LTime,MLC,gDt,GDx,GDy,GDz,I2CErr,INSErr" },
     { LOG_STARTUP_MSG, sizeof(log_Startup),         
       "STRT", "QBH",         "TimeUS,SType,CTot" },
     { LOG_CTUN_MSG, sizeof(log_Control_Tuning),     
       "CTUN", "Qcccchhh",    "TimeUS,NavRoll,Roll,NavPitch,Pitch,ThrOut,RdrOut,ThrDem" },
     { LOG_NTUN_MSG, sizeof(log_Nav_Tuning),         
-      "NTUN", "QfccccfIff",  "TimeUS,WpDist,TargBrg,NavBrg,AltErr,Arspd,Alt,GSpdCM,XT,XTi" },
+      "NTUN", "QCfccccfIf",  "TimeUS,Yaw,WpDist,TargBrg,NavBrg,AltErr,Arspd,Alt,GSpdCM,XT" },
     { LOG_SONAR_MSG, sizeof(log_Sonar),             
       "SONR", "QHfffbBf",   "TimeUS,DistCM,Volt,BaroAlt,GSpd,Thr,Cnt,Corr" },
     { LOG_ARM_DISARM_MSG, sizeof(log_Arm_Disarm),
@@ -507,8 +500,6 @@ const struct LogStructure Plane::log_structure[] = {
       "ATRP", "QBBcfff",  "TimeUS,Type,State,Servo,Demanded,Achieved,P" },
     { LOG_STATUS_MSG, sizeof(log_Status),
       "STAT", "QBfBBBBBB",  "TimeUS,isFlying,isFlyProb,Armed,Safety,Crash,Still,Stage,Hit" },
-    { LOG_QTUN_MSG, sizeof(QuadPlane::log_QControl_Tuning),
-      "QTUN", "Qffffehhffff", "TimeUS,AngBst,ThrOut,DAlt,Alt,BarAlt,DCRt,CRt,DVx,DVy,DAx,DAy" },
 #if OPTFLOW == ENABLED
     { LOG_OPTFLOW_MSG, sizeof(log_Optflow),
       "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY" },

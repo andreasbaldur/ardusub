@@ -1,7 +1,6 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "Tracker.h"
-#include "version.h"
 
 // default sensors are present and healthy: gyro, accelerometer, barometer, rate_control, attitude_stabilization, yaw_position, altitude control, x/y position control, motor_control
 #define MAVLINK_SENSOR_PRESENT_DEFAULT (MAV_SYS_STATUS_SENSOR_3D_GYRO | MAV_SYS_STATUS_SENSOR_3D_ACCEL | MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE | MAV_SYS_STATUS_SENSOR_ANGULAR_RATE_CONTROL | MAV_SYS_STATUS_SENSOR_ATTITUDE_STABILIZATION | MAV_SYS_STATUS_SENSOR_YAW_POSITION | MAV_SYS_STATUS_SENSOR_Z_ALTITUDE_CONTROL | MAV_SYS_STATUS_SENSOR_XY_POSITION_CONTROL | MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS)
@@ -128,6 +127,15 @@ void Tracker::send_waypoint_request(mavlink_channel_t chan)
     gcs[chan-MAVLINK_COMM_0].queued_waypoint_send();
 }
 
+void Tracker::send_statustext(mavlink_channel_t chan)
+{
+    mavlink_statustext_t *s = &gcs[chan-MAVLINK_COMM_0].pending_status;
+    mavlink_msg_statustext_send(
+        chan,
+        s->severity,
+        s->text);
+}
+
 void Tracker::send_nav_controller_output(mavlink_channel_t chan)
 {
     mavlink_msg_nav_controller_output_send(
@@ -151,10 +159,9 @@ void Tracker::send_simstate(mavlink_channel_t chan)
 #endif
 }
 
-bool GCS_MAVLINK::handle_guided_request(AP_Mission::Mission_Command&)
+void GCS_MAVLINK::handle_guided_request(AP_Mission::Mission_Command&)
 {
     // do nothing
-    return false;
 }
 
 void GCS_MAVLINK::handle_change_alt_request(AP_Mission::Mission_Command&)
@@ -233,8 +240,9 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
         break;
 
     case MSG_STATUSTEXT:
-        // depreciated, use GCS_MAVLINK::send_statustext*
-        return false;
+        CHECK_PAYLOAD_SIZE(STATUSTEXT);
+        tracker.send_statustext(chan);
+        break;
 
     case MSG_AHRS:
         CHECK_PAYLOAD_SIZE(AHRS);
@@ -282,7 +290,6 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
     case MSG_VIBRATION:
     case MSG_RPM:
     case MSG_MISSION_ITEM_REACHED:
-    case MSG_POSITION_TARGET_GLOBAL_INT:
         break; // just here to prevent a warning
     }
     return true;
@@ -376,13 +383,35 @@ const AP_Param::GroupInfo GCS_MAVLINK::var_info[] = {
     AP_GROUPEND
 };
 
-float GCS_MAVLINK::adjust_rate_for_stream_trigger(enum streams stream_num)
+// see if we should send a stream now. Called at 50Hz
+bool GCS_MAVLINK::stream_trigger(enum streams stream_num)
 {
-    if (_queued_parameter != nullptr) {
-        return 0.25f;
+    if (stream_num >= NUM_STREAMS) {
+        return false;
+    }
+    float rate = (uint8_t)streamRates[stream_num].get();
+
+    // send at a much lower rate during parameter sends
+    if (_queued_parameter != NULL) {
+        rate *= 0.25f;
     }
 
-    return 1.0f;
+    if (rate <= 0) {
+        return false;
+    }
+
+    if (stream_ticks[stream_num] == 0) {
+        // we're triggering now, setup the next trigger point
+        if (rate > 50) {
+            rate = 50;
+        }
+        stream_ticks[stream_num] = (50 / rate) -1 + stream_slowdown;
+        return true;
+    }
+
+    // count down at 50Hz
+    stream_ticks[stream_num]--;
+    return false;
 }
 
 void
@@ -960,7 +989,14 @@ void Tracker::gcs_update(void)
 
 void Tracker::gcs_send_text(MAV_SEVERITY severity, const char *str)
 {
-    GCS_MAVLINK::send_statustext(severity, 0xFF, str);
+    for (uint8_t i=0; i<num_gcs; i++) {
+        if (gcs[i].initialised) {
+            gcs[i].send_text(severity, str);
+        }
+    }
+#if LOGGING_ENABLED == ENABLED
+    DataFlash.Log_Write_Message(str);
+#endif
 }
 
 /*
@@ -970,12 +1006,22 @@ void Tracker::gcs_send_text(MAV_SEVERITY severity, const char *str)
  */
 void Tracker::gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...)
 {
-    char str[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] {};
     va_list arg_list;
+    gcs[0].pending_status.severity = (uint8_t)severity;
     va_start(arg_list, fmt);
-    hal.util->vsnprintf((char *)str, sizeof(str), fmt, arg_list);
+    hal.util->vsnprintf((char *)gcs[0].pending_status.text,
+            sizeof(gcs[0].pending_status.text), fmt, arg_list);
     va_end(arg_list);
-    GCS_MAVLINK::send_statustext(severity, 0xFF, str);
+#if LOGGING_ENABLED == ENABLED
+    DataFlash.Log_Write_Message(gcs[0].pending_status.text);
+#endif
+    gcs[0].send_message(MSG_STATUSTEXT);
+    for (uint8_t i=1; i<num_gcs; i++) {
+        if (gcs[i].initialised) {
+            gcs[i].pending_status = gcs[0].pending_status;
+            gcs[i].send_message(MSG_STATUSTEXT);
+        }
+    }
 }
 
 /**
@@ -984,5 +1030,4 @@ void Tracker::gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...)
 void Tracker::gcs_retry_deferred(void)
 {
     gcs_send_message(MSG_RETRY_DEFERRED);
-    GCS_MAVLINK::service_statustext();
 }

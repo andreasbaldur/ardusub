@@ -99,6 +99,9 @@ void AP_Compass_QFLIGHT::timer_update(void)
         // correct raw_field for known errors
         correct_field(raw_field, instance);
 
+        // publish raw_field (corrected point sample) for EKF use
+        publish_unfiltered_field(raw_field, time_us, instance);
+
         // accumulate into averaging filter
         sum += raw_field;
         count++;

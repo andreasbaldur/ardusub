@@ -11,8 +11,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
+#ifndef __ACCELCALIBRATOR_H__
+#define __ACCELCALIBRATOR_H__
 #include <AP_Math/AP_Math.h>
 #include <AP_Math/vectorN.h>
 
@@ -143,3 +144,4 @@ private:
     void calc_jacob(const Vector3f& sample, const struct param_t& params, VectorP& ret) const;
     void run_fit(uint8_t max_iterations, float& fitness);
 };
+#endif //__ACCELCALIBRATOR_H__

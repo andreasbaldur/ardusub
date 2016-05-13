@@ -22,7 +22,6 @@
 #pragma once
 
 #include <AP_Param/AP_Param.h>
-#include <AP_HAL/Util.h>
 
 #define AP_SCHEDULER_NAME_INITIALIZER(_name) .name = #_name,
 
@@ -127,7 +126,4 @@ private:
 
     // number of ticks that _spare_micros is counted over
     uint8_t _spare_ticks;
-
-    // performance counters
-    AP_HAL::Util::perf_counter_t *_perf_counters;
 };

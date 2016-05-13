@@ -68,7 +68,7 @@
  *  ..and many more.
  *
  *  Code commit statistics can be found here: https://github.com/diydrones/ardupilot/graphs/contributors
- *  Wiki: http://copter.ardupilot.org/
+ *  Wiki: http://copter.ardupilot.com/
  *  Requires modified version of Arduino, which can be found here: http://ardupilot.com/downloads/?category=6
  *
  */
@@ -79,8 +79,19 @@
 
 /*
   scheduler table for fast CPUs - all regular tasks apart from the fast_loop()
-  should be listed here, along with how often they should be called (in hz)
-  and the maximum time they are expected to take (in microseconds)
+  should be listed here, along with how often they should be called
+  (in 2.5ms units) and the maximum time they are expected to take (in
+  microseconds)
+  1    = 400hz
+  2    = 200hz
+  4    = 100hz
+  8    = 50hz
+  20   = 20hz
+  40   = 10hz
+  133  = 3hz
+  400  = 1hz
+  4000 = 0.1hz
+  
  */
 const AP_Scheduler::Task Sub::scheduler_tasks[] = {
     SCHED_TASK(rc_loop,              100,    130),
@@ -115,7 +126,8 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
     SCHED_TASK(update_mount,          50,     75),
 	SCHED_TASK(update_trigger,        50,     75),
     SCHED_TASK(ten_hz_logging_loop,   10,    350),
-    SCHED_TASK(twentyfive_hz_logging, 25,    110),
+    SCHED_TASK(fifty_hz_logging_loop, 50,    110),
+    SCHED_TASK(full_rate_logging_loop,400,    100),
     SCHED_TASK(dataflash_periodic,    400,    300),
     SCHED_TASK(perf_update,           0.1,    75),
     SCHED_TASK(read_receiver_rssi,    10,     75),
@@ -125,7 +137,6 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
 #if FRSKY_TELEM_ENABLED == ENABLED
     SCHED_TASK(frsky_telemetry_send,   5,     75),
 #endif
-	SCHED_TASK(terrain_update,        10,    100),
 #if EPM_ENABLED == ENABLED
     SCHED_TASK(epm_update,            10,     75),
 #endif
@@ -290,6 +301,9 @@ void Sub::rc_loop()
 // ---------------------------
 void Sub::throttle_loop()
 {
+    // get altitude and climb rate from inertial lib
+    read_inertial_altitude();
+
     // update throttle_low_comp value (controls priority of throttle vs attitude control)
     update_throttle_thr_mix();
 
@@ -338,7 +352,7 @@ void Sub::update_batt_compass(void)
         compass.set_throttle(motors.get_throttle()/1000.0f);
         compass.read();
         // log compass information
-        if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
+        if (should_log(MASK_LOG_COMPASS)) {
             DataFlash.Log_Write_Compass(compass);
         }
     }
@@ -351,11 +365,11 @@ void Sub::ten_hz_logging_loop()
     // log attitude data if we're not already logging at the higher rate
     if (should_log(MASK_LOG_ATTITUDE_MED) && !should_log(MASK_LOG_ATTITUDE_FAST)) {
         Log_Write_Attitude();
-        DataFlash.Log_Write_Rate(ahrs, motors, attitude_control, pos_control);
+        Log_Write_Rate();
         if (should_log(MASK_LOG_PID)) {
-            DataFlash.Log_Write_PID(LOG_PIDR_MSG, attitude_control.get_rate_roll_pid().get_pid_info() );
-            DataFlash.Log_Write_PID(LOG_PIDP_MSG, attitude_control.get_rate_pitch_pid().get_pid_info() );
-            DataFlash.Log_Write_PID(LOG_PIDY_MSG, attitude_control.get_rate_yaw_pid().get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDR_MSG, g.pid_rate_roll.get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDP_MSG, g.pid_rate_pitch.get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDY_MSG, g.pid_rate_yaw.get_pid_info() );
             DataFlash.Log_Write_PID(LOG_PIDA_MSG, g.pid_accel_z.get_pid_info() );
         }
     }
@@ -379,9 +393,9 @@ void Sub::ten_hz_logging_loop()
     }
 }
 
-// twentyfive_hz_logging_loop
-// should be run at 25hz
-void Sub::twentyfive_hz_logging()
+// fifty_hz_logging_loop
+// should be run at 50hz
+void Sub::fifty_hz_logging_loop()
 {
 #if HIL_MODE != HIL_MODE_DISABLED
     // HIL for a copter needs very fast update of the servo values
@@ -391,20 +405,32 @@ void Sub::twentyfive_hz_logging()
 #if HIL_MODE == HIL_MODE_DISABLED
     if (should_log(MASK_LOG_ATTITUDE_FAST)) {
         Log_Write_Attitude();
-        DataFlash.Log_Write_Rate(ahrs, motors, attitude_control, pos_control);
+        Log_Write_Rate();
         if (should_log(MASK_LOG_PID)) {
-            DataFlash.Log_Write_PID(LOG_PIDR_MSG, attitude_control.get_rate_roll_pid().get_pid_info() );
-            DataFlash.Log_Write_PID(LOG_PIDP_MSG, attitude_control.get_rate_pitch_pid().get_pid_info() );
-            DataFlash.Log_Write_PID(LOG_PIDY_MSG, attitude_control.get_rate_yaw_pid().get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDR_MSG, g.pid_rate_roll.get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDP_MSG, g.pid_rate_pitch.get_pid_info() );
+            DataFlash.Log_Write_PID(LOG_PIDY_MSG, g.pid_rate_yaw.get_pid_info() );
             DataFlash.Log_Write_PID(LOG_PIDA_MSG, g.pid_accel_z.get_pid_info() );
         }
     }
 
     // log IMU data if we're not already logging at the higher rate
-    if (should_log(MASK_LOG_IMU) && should_log(MASK_LOG_IMU_RAW)) {
+    if (should_log(MASK_LOG_IMU) && !(should_log(MASK_LOG_IMU_FAST) || should_log(MASK_LOG_IMU_RAW))) {
         DataFlash.Log_Write_IMU(ins);
     }
 #endif
+}
+
+// full_rate_logging_loop
+// should be run at the MAIN_LOOP_RATE
+void Sub::full_rate_logging_loop()
+{
+    if (should_log(MASK_LOG_IMU_FAST) && !should_log(MASK_LOG_IMU_RAW)) {
+        DataFlash.Log_Write_IMU(ins);
+    }
+    if (should_log(MASK_LOG_IMU_FAST) || should_log(MASK_LOG_IMU_RAW)) {
+        DataFlash.Log_Write_IMUDT(ins);
+    }
 }
 
 void Sub::dataflash_periodic(void)
@@ -417,9 +443,6 @@ void Sub::three_hz_loop()
 {
     // check if we've lost contact with the ground station
     failsafe_gcs_check();
-
-    // check if we've lost terrain data
-    failsafe_terrain_check();
 
 #if AC_FENCE == ENABLED
     // check if we have breached a fence
@@ -451,13 +474,15 @@ void Sub::one_hz_loop()
 
         update_using_interlock();
 
+#if FRAME_CONFIG != HELI_FRAME
         // check the user hasn't updated the frame orientation
         motors.set_frame_orientation(g.frame_orientation);
 
         // set all throttle channel settings
-        motors.set_throttle_range(g.throttle_min, channel_throttle->get_radio_min(), channel_throttle->get_radio_max());
+        motors.set_throttle_range(g.throttle_min, channel_throttle->radio_min, channel_throttle->radio_max);
         // set hover throttle
         motors.set_hover_throttle(g.throttle_mid);
+#endif
     }
 
     // update assigned functions and enable auxiliary servos
@@ -465,14 +490,24 @@ void Sub::one_hz_loop()
 
     check_usb_mux();
 
+#if AP_TERRAIN_AVAILABLE && AC_TERRAIN
+    terrain.update();
+
+    // tell the rangefinder our height, so it can go into power saving
+    // mode if available
+#if CONFIG_SONAR == ENABLED
+    float height;
+    if (terrain.height_above_terrain(height, true)) {
+        sonar.set_estimated_terrain_height(height);
+    }
+#endif
+#endif
+
     // update position controller alt limits
     update_poscon_alt_max();
 
     // enable/disable raw gyro/accel logging
     ins.set_raw_logging(should_log(MASK_LOG_IMU_RAW));
-
-    // log terrain data
-    terrain_logging();
 }
 
 // called at 50hz
@@ -489,7 +524,7 @@ void Sub::update_GPS(void)
             last_gps_reading[i] = gps.last_message_time_ms(i);
 
             // log GPS message
-            if (should_log(MASK_LOG_GPS) && !ahrs.have_ekf_logging()) {
+            if (should_log(MASK_LOG_GPS)) {
                 DataFlash.Log_Write_GPS(gps, i, current_loc.alt);
             }
 
@@ -545,17 +580,17 @@ void Sub::update_simple_mode(void)
 
     if (ap.simple_mode == 1) {
         // rotate roll, pitch input by -initial simple heading (i.e. north facing)
-        rollx = channel_roll->get_control_in()*simple_cos_yaw - channel_pitch->get_control_in()*simple_sin_yaw;
-        pitchx = channel_roll->get_control_in()*simple_sin_yaw + channel_pitch->get_control_in()*simple_cos_yaw;
+        rollx = channel_roll->control_in*simple_cos_yaw - channel_pitch->control_in*simple_sin_yaw;
+        pitchx = channel_roll->control_in*simple_sin_yaw + channel_pitch->control_in*simple_cos_yaw;
     }else{
         // rotate roll, pitch input by -super simple heading (reverse of heading to home)
-        rollx = channel_roll->get_control_in()*super_simple_cos_yaw - channel_pitch->get_control_in()*super_simple_sin_yaw;
-        pitchx = channel_roll->get_control_in()*super_simple_sin_yaw + channel_pitch->get_control_in()*super_simple_cos_yaw;
+        rollx = channel_roll->control_in*super_simple_cos_yaw - channel_pitch->control_in*super_simple_sin_yaw;
+        pitchx = channel_roll->control_in*super_simple_sin_yaw + channel_pitch->control_in*super_simple_cos_yaw;
     }
 
     // rotate roll, pitch input from north facing to vehicle's perspective
-    channel_roll->set_control_in(rollx*ahrs.cos_yaw() + pitchx*ahrs.sin_yaw());
-    channel_pitch->set_control_in(-rollx*ahrs.sin_yaw() + pitchx*ahrs.cos_yaw());
+    channel_roll->control_in = rollx*ahrs.cos_yaw() + pitchx*ahrs.sin_yaw();
+    channel_pitch->control_in = -rollx*ahrs.sin_yaw() + pitchx*ahrs.cos_yaw();
 }
 
 // update_super_simple_bearing - adjusts simple bearing based on location

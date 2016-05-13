@@ -346,7 +346,6 @@ void Scheduler::_run_uarts()
     UARTDriver::from(hal.uartC)->_timer_tick();
 #endif
     UARTDriver::from(hal.uartE)->_timer_tick();
-    UARTDriver::from(hal.uartF)->_timer_tick();
 }
 
 void Scheduler::_rcin_task()

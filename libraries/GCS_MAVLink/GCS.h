@@ -3,7 +3,9 @@
 /// @file	GCS.h
 /// @brief	Interface definition for the various Ground Control System
 // protocols.
-#pragma once
+
+#ifndef __GCS_H
+#define __GCS_H
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
@@ -15,18 +17,11 @@
 #include "MAVLink_routing.h"
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_Mount/AP_Mount.h>
-#include <AP_HAL/utility/RingBuffer.h>
 
 // check if a message will fit in the payload space available
 #define HAVE_PAYLOAD_SPACE(chan, id) (comm_get_txspace(chan) >= MAVLINK_NUM_NON_PAYLOAD_BYTES+MAVLINK_MSG_ID_ ## id ## _LEN)
 #define CHECK_PAYLOAD_SIZE(id) if (comm_get_txspace(chan) < MAVLINK_NUM_NON_PAYLOAD_BYTES+MAVLINK_MSG_ID_ ## id ## _LEN) return false
 #define CHECK_PAYLOAD_SIZE2(id) if (!HAVE_PAYLOAD_SPACE(chan, id)) return false
-
-#if HAL_CPU_CLASS <= HAL_CPU_CLASS_150 || CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    #define GCS_MAVLINK_PAYLOAD_STATUS_CAPACITY          5
-#else
-    #define GCS_MAVLINK_PAYLOAD_STATUS_CAPACITY          30
-#endif
 
 //  GCS Message ID's
 /// NOTE: to ensure we never block on sending MAVLink messages
@@ -74,7 +69,6 @@ enum ap_message {
     MSG_VIBRATION,
     MSG_RPM,
     MSG_MISSION_ITEM_REACHED,
-    MSG_POSITION_TARGET_GLOBAL_INT,
     MSG_RETRY_DEFERRED // this must be last
 };
 
@@ -100,13 +94,6 @@ public:
         msg_snoop = _msg_snoop;
     }
 
-    struct statustext_t {
-        uint8_t                 bitmask;
-        mavlink_statustext_t    msg;
-    };
-    static ObjectArray<statustext_t> _statustext_queue;
-
-
     // accessor for uart
     AP_HAL::UARTDriver *get_uart() { return _port; }
 
@@ -131,6 +118,10 @@ public:
 
     // see if we should send a stream now. Called at 50Hz
     bool        stream_trigger(enum streams stream_num);
+
+	// this costs us 51 bytes per instance, but means that low priority
+	// messages don't block the CPU
+    mavlink_statustext_t pending_status;
 
     // call to reset the timeout window for entering the cli
     void reset_cli_timeout();
@@ -169,13 +160,11 @@ public:
     static uint8_t active_channel_mask(void) { return mavlink_active; }
 
     /*
-    send a statustext message to active MAVLink connections, or a specific
-    one. This function is static so it can be called from any library.
+      send a statustext message to all active MAVLink
+      connections. This function is static so it can be called from
+      any library
     */
     static void send_statustext_all(MAV_SEVERITY severity, const char *fmt, ...);
-    static void send_statustext_chan(MAV_SEVERITY severity, uint8_t dest_chan, const char *fmt, ...);
-    static void send_statustext(MAV_SEVERITY severity, uint8_t dest_bitmask, const char *text);
-    static void service_statustext(void);
 
     // send a PARAM_VALUE message to all active MAVLink connections.
     static void send_parameter_value_all(const char *param_name, ap_var_type param_type, float param_value);
@@ -185,12 +174,7 @@ public:
       This is a no-op if no routes to components have been learned
     */
     static void send_to_components(const mavlink_message_t* msg) { routing.send_to_components(msg); }
-    
-    /*
-      allow forwarding of packets / heartbeats to be blocked as required by some components to reduce traffic
-    */
-    static void disable_channel_routing(mavlink_channel_t chan) { routing.no_route_mask |= (1U<<(chan-MAVLINK_COMM_0)); }
-    
+
     /*
       search for a component in the routing table with given mav_type and retrieve it's sysid, compid and channel
       returns if a matching component is found
@@ -205,8 +189,6 @@ public:
     }
     
 private:
-    float       adjust_rate_for_stream_trigger(enum streams stream_num);
-
     void        handleMessage(mavlink_message_t * msg);
 
     /// The stream we are communicating over
@@ -314,7 +296,7 @@ private:
     // vehicle specific message send function
     bool try_send_message(enum ap_message id);
 
-    bool handle_guided_request(AP_Mission::Mission_Command &cmd);
+    void handle_guided_request(AP_Mission::Mission_Command &cmd);
     void handle_change_alt_request(AP_Mission::Mission_Command &cmd);
 
     void handle_log_request_list(mavlink_message_t *msg, DataFlash_Class &dataflash);
@@ -351,3 +333,5 @@ private:
     // return true if this channel has hardware flow control
     bool have_flow_control(void);
 };
+
+#endif // __GCS_H

@@ -201,14 +201,6 @@ void DataFlash_MAVLink::free_all_blocks()
     _latest_block_len = 0;
 }
 
-void DataFlash_MAVLink::stop_logging()
-{
-    if (_sending_to_client) {
-        _sending_to_client = false;
-        _last_response_time = AP_HAL::millis();
-    }
-}
-
 void DataFlash_MAVLink::handle_ack(mavlink_channel_t chan,
                                    mavlink_message_t* msg,
                                    uint32_t seqno)
@@ -218,7 +210,10 @@ void DataFlash_MAVLink::handle_ack(mavlink_channel_t chan,
     }
     if(seqno == MAV_REMOTE_LOG_DATA_BLOCK_STOP) {
         Debug("Received stop-logging packet");
-        stop_logging();
+        if (_sending_to_client) {
+            _sending_to_client = false;
+            _last_response_time = AP_HAL::millis();
+        }
         return;
     }
     if(seqno == MAV_REMOTE_LOG_DATA_BLOCK_START) {
@@ -236,7 +231,7 @@ void DataFlash_MAVLink::handle_ack(mavlink_channel_t chan,
             _target_component_id = msg->compid;
             _chan = chan;
             _next_seq_num = 0;
-            start_new_log_reset_variables();
+            _startup_messagewriter->reset();
             _last_response_time = AP_HAL::millis();
             Debug("Target: (%u/%u)", _target_system_id, _target_component_id);
         }

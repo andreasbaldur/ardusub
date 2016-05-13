@@ -1,5 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+#ifndef AC_CIRCLE_H
+#define AC_CIRCLE_H
 
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
@@ -100,3 +101,4 @@ private:
     float       _angular_vel_max;   // maximum velocity in radians/sec
     float       _angular_accel; // angular acceleration in radians/sec/sec
 };
+#endif	// AC_CIRCLE_H

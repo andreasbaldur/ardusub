@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_PX4_UTIL_H__
+#define __AP_HAL_PX4_UTIL_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_PX4_Namespace.h"
@@ -62,3 +64,5 @@ private:
     int _safety_handle;
     PX4::NSHShellStream _shell_stream;
 };
+
+#endif // __AP_HAL_PX4_UTIL_H__

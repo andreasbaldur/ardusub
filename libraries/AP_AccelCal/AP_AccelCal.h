@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __AP_ACCELCAL_H__
+#define __AP_ACCELCAL_H__
 
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include "AccelCalibrator.h"
@@ -82,3 +83,5 @@ private:
     virtual void _acal_event_cancellation() {};
     virtual void _acal_event_failure() {};
 };
+
+#endif

@@ -33,8 +33,7 @@
 #define FLIP_PITCH_FORWARD  -1      // used to set flip_dir
 
 FlipState flip_state;               // current state of flip
-control_mode_t   flip_orig_control_mode;   // flight mode when flip was initated
-mode_reason_t    flip_orig_control_mode_reason;
+uint8_t   flip_orig_control_mode;   // flight mode when flip was initated
 uint32_t  flip_start_time;          // time since flip began
 int8_t    flip_roll_dir;            // roll direction (-1 = roll left, 1 = roll right)
 int8_t    flip_pitch_dir;           // pitch direction (-1 = pitch forward, 1 = pitch back)
@@ -53,7 +52,7 @@ bool Copter::flip_init(bool ignore_checks)
     }
 
     // ensure roll input is less than 40deg
-    if (abs(channel_roll->get_control_in()) >= 4000) {
+    if (abs(channel_roll->control_in) >= 4000) {
         return false;
     }
 
@@ -64,7 +63,6 @@ bool Copter::flip_init(bool ignore_checks)
 
     // capture original flight mode so that we can return to it after completion
     flip_orig_control_mode = control_mode;
-    flip_orig_control_mode_reason = control_mode_reason;
 
     // initialise state
     flip_state = Flip_Start;
@@ -73,11 +71,11 @@ bool Copter::flip_init(bool ignore_checks)
     flip_roll_dir = flip_pitch_dir = 0;
 
     // choose direction based on pilot's roll and pitch sticks
-    if (channel_pitch->get_control_in() > 300) {
+    if (channel_pitch->control_in > 300) {
         flip_pitch_dir = FLIP_PITCH_BACK;
-    }else if(channel_pitch->get_control_in() < -300) {
+    }else if(channel_pitch->control_in < -300) {
         flip_pitch_dir = FLIP_PITCH_FORWARD;
-    }else if (channel_roll->get_control_in() >= 0) {
+    }else if (channel_roll->control_in >= 0) {
         flip_roll_dir = FLIP_ROLL_RIGHT;
     }else{
         flip_roll_dir = FLIP_ROLL_LEFT;
@@ -98,16 +96,16 @@ bool Copter::flip_init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::flip_run()
 {
-    float throttle_out;
+    int16_t throttle_out;
     float recovery_angle;
 
     // if pilot inputs roll > 40deg or timeout occurs abandon flip
-    if (!motors.armed() || (abs(channel_roll->get_control_in()) >= 4000) || (abs(channel_pitch->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
+    if (!motors.armed() || (abs(channel_roll->control_in) >= 4000) || (abs(channel_pitch->control_in) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
         flip_state = Flip_Abandon;
     }
 
     // get pilot's desired throttle
-    throttle_out = get_pilot_desired_throttle(channel_throttle->get_control_in());
+    throttle_out = get_pilot_desired_throttle(channel_throttle->control_in);
 
     // get corrected angle based on direction and axis of rotation
     // we flip the sign of flip_angle to minimize the code repetition
@@ -201,9 +199,9 @@ void Copter::flip_run()
         // check for successful recovery
         if (fabsf(recovery_angle) <= FLIP_RECOVERY_ANGLE) {
             // restore original flight mode
-            if (!set_mode(flip_orig_control_mode, flip_orig_control_mode_reason)) {
+            if (!set_mode(flip_orig_control_mode)) {
                 // this should never happen but just in case
-                set_mode(STABILIZE, MODE_REASON_UNKNOWN);
+                set_mode(STABILIZE);
             }
             // log successful completion
             Log_Write_Event(DATA_FLIP_END);
@@ -212,20 +210,17 @@ void Copter::flip_run()
 
     case Flip_Abandon:
         // restore original flight mode
-        if (!set_mode(flip_orig_control_mode, flip_orig_control_mode_reason)) {
+        if (!set_mode(flip_orig_control_mode)) {
             // this should never happen but just in case
-            set_mode(STABILIZE, MODE_REASON_UNKNOWN);
+            set_mode(STABILIZE);
         }
         // log abandoning flip
         Log_Write_Error(ERROR_SUBSYSTEM_FLIP,ERROR_CODE_FLIP_ABANDONED);
         break;
     }
 
-    // set motors to full range
-    motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
-
     // output pilot's throttle without angle boost
-    if (is_zero(throttle_out)) {
+    if (throttle_out == 0) {
         attitude_control.set_throttle_out_unstabilized(0,false,g.throttle_filt);
     } else {
         attitude_control.set_throttle_out(throttle_out, false, g.throttle_filt);

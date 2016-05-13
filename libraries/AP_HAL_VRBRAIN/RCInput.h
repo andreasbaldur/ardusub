@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_VRBRAIN_RCINPUT_H__
+#define __AP_HAL_VRBRAIN_RCINPUT_H__
 
 #include "AP_HAL_VRBRAIN.h"
 #include <drivers/drv_rc_input.h>
@@ -29,3 +31,5 @@ private:
     perf_counter_t _perf_rcin;
     pthread_mutex_t rcin_mutex;
 };
+
+#endif // __AP_HAL_VRBRAIN_RCINPUT_H__

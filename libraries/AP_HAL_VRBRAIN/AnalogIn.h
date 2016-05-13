@@ -1,5 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_HAL_VRBRAIN_ANALOGIN_H__
+#define __AP_HAL_VRBRAIN_ANALOGIN_H__
 
 #include "AP_HAL_VRBRAIN.h"
 #include <pthread.h>
@@ -81,3 +83,4 @@ private:
 
     void next_stop_pin(void);
 };
+#endif // __AP_HAL_VRBRAIN_ANALOGIN_H__

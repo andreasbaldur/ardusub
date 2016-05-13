@@ -14,7 +14,9 @@
 // -------------------------------------------------------------
 
 // Not for production - Work in progress
-#pragma once
+
+#ifndef _PPM_ENCODER_H_
+#define _PPM_ENCODER_H_
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -1472,3 +1474,6 @@ void ppm_encoder_init( void )
 	
 }
 // ------------------------------------------------------------------------------
+
+#endif // _PPM_ENCODER_H_
+

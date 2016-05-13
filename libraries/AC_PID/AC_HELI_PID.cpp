@@ -32,19 +32,22 @@ const AP_Param::GroupInfo AC_HELI_PID::var_info[] = {
     // @Description: The maximum/minimum value that the I term can output
     AP_GROUPINFO("IMAX", 5, AC_HELI_PID, _imax, 0),
 
-    // @Param: FILT
+    // @Param: FILT_HZ
     // @DisplayName: PID Input filter frequency in Hz
-    // @Description: PID Input filter frequency in Hz
-    AP_GROUPINFO("FILT", 6, AC_HELI_PID, _filt_hz, AC_PID_FILT_HZ_DEFAULT),
+    // @Description:
+    AP_GROUPINFO("FILT_HZ", 6, AC_HELI_PID, _filt_hz, AC_PID_FILT_HZ_DEFAULT),
 
-    // @Param: ILMI
+    // @Param: I_L_MIN
     // @DisplayName: I-term Leak Minimum
     // @Description: Point below which I-term will not leak down
-    // @Range: 0 1
+    // @Range: 0 4500
     // @User: Advanced
-    AP_GROUPINFO("ILMI", 7, AC_HELI_PID, _leak_min, AC_PID_LEAK_MIN),
+    AP_GROUPINFO("I_L_MIN", 7, AC_HELI_PID, _leak_min, AC_PID_LEAK_MIN),
 
-    // index 8 was for AFF, now removed
+    // @Param: AFF
+    // @DisplayName: Acceleration FF FeedForward Gain
+    // @Description: Acceleration FF Gain which produces an output value that is proportional to the change in demanded input
+    AP_GROUPINFO("AFF",    8, AC_HELI_PID, _aff, 0),
 
     AP_GROUPEND
 };
@@ -54,6 +57,7 @@ AC_HELI_PID::AC_HELI_PID(float initial_p, float initial_i, float initial_d, floa
     AC_PID(initial_p, initial_i, initial_d, initial_imax, initial_filt_hz, dt)
 {
     _vff = initial_vff;
+    _aff = 0;
     _last_requested_rate = 0;
 }
 
@@ -61,6 +65,22 @@ float AC_HELI_PID::get_vff(float requested_rate)
 {
     _pid_info.FF = (float)requested_rate * _vff;
     return _pid_info.FF;
+}
+
+float AC_HELI_PID::get_aff(float requested_rate)
+{
+    float derivative;
+
+    // calculate derivative
+    if (_dt > 0.0f) {
+        derivative = (requested_rate - _last_requested_rate) / _dt;
+    } else {
+        derivative = 0;
+    }
+
+    _pid_info.AFF = derivative * _aff;
+    _last_requested_rate = requested_rate;
+    return _pid_info.AFF;
 }
 
 // This is an integrator which tends to decay to zero naturally

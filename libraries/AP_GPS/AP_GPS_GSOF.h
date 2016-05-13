@@ -18,10 +18,11 @@
 //  Trimble GPS driver for ArduPilot.
 //	Code by Michael Oborne
 //
-#pragma once
+
+#ifndef __AP_GPS_GSOF_H__
+#define __AP_GPS_GSOF_H__
 
 #include "AP_GPS.h"
-#include "GPS_Backend.h"
 
 class AP_GPS_GSOF : public AP_GPS_Backend
 {
@@ -83,6 +84,9 @@ private:
     uint8_t gsofmsgreq_index = 0;
     uint8_t gsofmsgreq[5] = {1,2,8,9,12};
 
+    uint32_t last_hdop = 9999;
     uint32_t crc_error_counter = 0;
     uint32_t last_injected_data_ms = 0;
 };
+
+#endif // __AP_GPS_GSOF_H__

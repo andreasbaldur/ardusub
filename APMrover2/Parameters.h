@@ -1,5 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef PARAMETERS_H
+#define PARAMETERS_H
 
 #include <AP_Common/AP_Common.h>
 
@@ -320,3 +322,6 @@ public:
 };
 
 extern const AP_Param::Info var_info[];
+
+#endif // PARAMETERS_H
+

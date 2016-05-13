@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_ANALOGIN_H__
+#define __AP_HAL_FLYMAPLE_ANALOGIN_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -99,3 +101,4 @@ private:
     // divider (25k/5k) 
     FLYMAPLEAnalogSource _vcc;
 };
+#endif // __AP_HAL_FLYMAPLE_ANALOGIN_H__

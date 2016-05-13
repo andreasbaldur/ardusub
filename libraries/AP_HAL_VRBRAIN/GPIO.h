@@ -1,5 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_HAL_VRBRAIN_GPIO_H__
+#define __AP_HAL_VRBRAIN_GPIO_H__
 
 #include "AP_HAL_VRBRAIN.h"
 
@@ -50,3 +52,5 @@ public:
 private:
     uint8_t _v;
 };
+
+#endif // __AP_HAL_VRBRAIN_GPIO_H__

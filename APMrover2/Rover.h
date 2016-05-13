@@ -13,12 +13,17 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-/*
+/* 
    main Rover class, containing all vehicle specific state
 */
-#pragma once
 
-#include <cmath>
+#ifndef _ROVER_H_
+#define _ROVER_H_
+
+#define THISFIRMWARE "ArduRover v2.51-beta"
+#define FIRMWARE_VERSION 2,51,0,FIRMWARE_VERSION_TYPE_BETA
+
+#include <math.h>
 #include <stdarg.h>
 
 // Libraries
@@ -125,7 +130,7 @@ private:
     RC_Channel *channel_throttle;
     RC_Channel *channel_learn;
 
-    DataFlash_Class DataFlash;
+    DataFlash_Class DataFlash{FIRMWARE_STRING};
 
     bool in_log_download;
 
@@ -149,7 +154,7 @@ private:
 #endif
 
     // Arming/Disarming mangement class
-    AP_Arming arming {ahrs, barometer, compass, battery, home_is_set};
+    AP_Arming arming {ahrs, barometer, compass, home_is_set};
 
     AP_L1_Control L1_controller;
 
@@ -402,6 +407,7 @@ private:
     void send_pid_tuning(mavlink_channel_t chan);
     void send_rangefinder(mavlink_channel_t chan);
     void send_current_waypoint(mavlink_channel_t chan);
+    void send_statustext(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
     void gcs_send_message(enum ap_message id);
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
@@ -559,3 +565,5 @@ extern Rover rover;
 
 using AP_HAL::millis;
 using AP_HAL::micros;
+
+#endif // _ROVER_H_

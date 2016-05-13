@@ -1,7 +1,6 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "Tracker.h"
-#include "version.h"
 
 // mission storage
 static const StorageAccess wp_storage(StorageManager::StorageMission);
@@ -66,8 +65,6 @@ void Tracker::init_tracker()
 #if LOGGING_ENABLED == ENABLED
     log_init();
 #endif
-
-    GCS_MAVLINK::set_dataflash(&DataFlash);
 
     if (g.compass_enabled==true) {
         if (!compass.init() || !compass.read()) {
@@ -189,8 +186,8 @@ void Tracker::disarm_servos()
 void Tracker::prepare_servos()
 {
     start_time_ms = AP_HAL::millis();
-    channel_yaw.set_radio_out(channel_yaw.get_radio_trim());
-    channel_pitch.set_radio_out(channel_pitch.get_radio_trim());
+    channel_yaw.radio_out = channel_yaw.radio_trim;
+    channel_pitch.radio_out = channel_pitch.radio_trim;
     channel_yaw.output();
     channel_pitch.output();
 }

@@ -4,7 +4,9 @@
  *  Created on: Nov 10, 2014
  *      Author: MLandes
  */
-#pragma once
+
+#ifndef AP_IRLOCK_PX4_H_
+#define AP_IRLOCK_PX4_H_
 
 #include "IRLock.h"
 
@@ -23,3 +25,5 @@ private:
     int _fd;
     uint64_t _last_timestamp;
 };
+
+#endif /* AP_IRLOCK_PX4_H_ */

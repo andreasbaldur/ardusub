@@ -1,4 +1,7 @@
-#pragma once
+
+
+#ifndef __AP_HAL_VRBRAIN_STORAGE_H__
+#define __AP_HAL_VRBRAIN_STORAGE_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_VRBRAIN_Namespace.h"
@@ -35,3 +38,5 @@ private:
     uint32_t _mtd_signature(void);
     void _mtd_write_signature(void);
 };
+
+#endif // __AP_HAL_VRBRAIN_STORAGE_H__

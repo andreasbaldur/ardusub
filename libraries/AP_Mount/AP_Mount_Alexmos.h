@@ -3,7 +3,9 @@
 /*
   Alexmos Serial controlled mount backend class
 */
-#pragma once
+
+#ifndef __AP_MOUNT_ALEXMOS_H__
+#define __AP_MOUNT_ALEXMOS_H__
 
 #include "AP_Mount.h"
 #include <AP_HAL/AP_HAL.h>
@@ -317,3 +319,5 @@ private:
     // confirmed that last command was ok
     bool _last_command_confirmed : 1;
 };
+
+#endif

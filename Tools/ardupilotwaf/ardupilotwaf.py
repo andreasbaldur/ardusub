@@ -5,8 +5,7 @@ from __future__ import print_function
 from waflib import Logs, Options, Utils
 from waflib.Build import BuildContext
 from waflib.Configure import conf
-import os.path, os
-from collections import OrderedDict
+import os.path
 
 SOURCE_EXTS = [
     '*.S',
@@ -49,11 +48,8 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'Filter',
     'GCS_MAVLink',
     'RC_Channel',
+    'SITL',
     'StorageManager',
-    'AP_Tuning',
-    'AP_RPM',
-    'AP_RSSI',
-    'AP_Mount',
 ]
 
 def _get_legacy_defines(sketch_name):
@@ -77,8 +73,6 @@ def ap_get_all_libraries(bld):
             continue
         if name.startswith('AP_HAL'):
             continue
-        if name == 'SITL':
-            continue
         libraries.append(name)
     libraries.extend(['AP_HAL', 'AP_HAL_Empty'])
     return libraries
@@ -90,12 +84,10 @@ def ap_common_vehicle_libraries(bld):
 _grouped_programs = {}
 
 @conf
-def ap_program(bld,
-               program_groups='bin',
-               program_dir=None,
-               use_legacy_defines=True,
-               program_name=None,
-               **kw):
+def ap_program(bld, program_group='bin',
+            use_legacy_defines=True,
+            program_name=None,
+            **kw):
     if 'target' in kw:
         bld.fatal('Do not pass target for program')
     if 'defines' not in kw:
@@ -109,39 +101,22 @@ def ap_program(bld,
     if use_legacy_defines:
         kw['defines'].extend(_get_legacy_defines(bld.path.name))
 
-    kw['cxxflags'] = kw.get('cxxflags', []) + ['-include', 'ap_config.h']
-    kw['features'] = kw.get('features', []) + bld.env.AP_PROGRAM_FEATURES
+    kw['features'] = common_features(bld) + kw.get('features', [])
 
-    program_groups = Utils.to_list(program_groups)
+    name = os.path.join(program_group, program_name)
+    target = bld.bldnode.find_or_declare(name)
 
-    if not program_dir:
-        program_dir = program_groups[0]
-
-    name = os.path.join(program_dir, program_name)
-
-    tg_constructor = bld.program
-    if bld.env.AP_PROGRAM_AS_STLIB:
-        tg_constructor = bld.stlib
-    else:
-        if bld.env.STATIC_LINKING:
-            kw['features'].append('static_linking')
-
-
-    tg = tg_constructor(
-        target='#%s' % name,
+    tg = bld.program(
+        target=target,
         name=name,
-        program_name=program_name,
-        program_dir=program_dir,
         **kw
     )
-
-    for group in program_groups:
-        _grouped_programs.setdefault(group, []).append(tg)
+    _grouped_programs.setdefault(program_group, []).append(tg)
 
 @conf
 def ap_example(bld, **kw):
-    kw['program_groups'] = 'examples'
-    ap_program(bld, use_legacy_defines=False, **kw)
+    kw['program_group'] = 'examples'
+    ap_program(bld, **kw)
 
 # NOTE: Code in libraries/ is compiled multiple times. So ensure each
 # compilation is independent by providing different index for each.
@@ -154,9 +129,11 @@ def _get_next_idx():
     LAST_IDX += 1
     return LAST_IDX
 
-def unique_list(items):
-    '''remove duplicate elements from a list while maintaining ordering'''
-    return list(OrderedDict.fromkeys(items))
+def common_features(bld):
+    features = []
+    if bld.env.STATIC_LINKING:
+        features.append('static_linking')
+    return features
 
 @conf
 def ap_stlib(bld, **kw):
@@ -168,7 +145,7 @@ def ap_stlib(bld, **kw):
         bld.fatal('Missing libraries for ap_stlib')
 
     sources = []
-    libraries = unique_list(kw['libraries'] + bld.env.AP_LIBRARIES)
+    libraries = kw['libraries'] + bld.env.AP_LIBRARIES
 
     for lib_name in libraries:
         lib_node = bld.srcnode.find_dir('libraries/' + lib_name)
@@ -177,8 +154,6 @@ def ap_stlib(bld, **kw):
         lib_sources = lib_node.ant_glob(SOURCE_EXTS + UTILITY_SOURCE_EXTS)
         sources.extend(lib_sources)
 
-    kw['cxxflags'] = kw.get('cxxflags', []) + ['-include', 'ap_config.h']
-    kw['features'] = kw.get('features', []) + bld.env.AP_STLIB_FEATURES
     kw['source'] = sources
     kw['target'] = kw['name']
     kw['defines'] = _get_legacy_defines(kw['vehicle'])
@@ -191,7 +166,7 @@ def ap_find_tests(bld, use=[]):
     if not bld.env.HAS_GTEST:
         return
 
-    features = []
+    features = common_features(bld)
     if bld.cmd == 'check':
         features.append('test')
 
@@ -208,24 +183,10 @@ def ap_find_tests(bld, use=[]):
             source=[f],
             use=use,
             program_name=f.change_ext('').name,
-            program_groups='tests',
+            program_group='tests',
             use_legacy_defines=False,
             cxxflags=['-Wno-undef'],
         )
-
-_versions = []
-
-@conf
-def ap_version_append_str(ctx, k, v):
-    ctx.env['AP_VERSION_ITEMS'] += [(k, '"{}"'.format(os.environ.get(k, v)))]
-
-@conf
-def write_version_header(ctx, tgt):
-    with open(tgt, 'w') as f:
-        print('#pragma once\n', file=f)
-
-        for k, v in ctx.env['AP_VERSION_ITEMS']:
-            print('#define {} {}'.format(k, v), file=f)
 
 @conf
 def ap_find_benchmarks(bld, use=[]):
@@ -237,12 +198,12 @@ def ap_find_benchmarks(bld, use=[]):
     for f in bld.path.ant_glob(incl='*.cpp'):
         ap_program(
             bld,
-            features=['gbenchmark'],
+            features=common_features(bld) + ['gbenchmark'],
             includes=includes,
             source=[f],
             use=use,
             program_name=f.change_ext('').name,
-            program_groups='benchmarks',
+            program_group='benchmarks',
             use_legacy_defines=False,
         )
 
@@ -355,18 +316,10 @@ def options(opt):
              'examples. The special group "all" selects all programs.',
     )
 
-    g.add_option('--upload',
-        action='store_true',
-        help='Upload applicable targets to a connected device. Not all ' +
-             'platforms may support this. Example: `waf copter --upload` ' +
-             'means "build arducopter and upload it to my board".',
-    )
-
     g = opt.ap_groups['check']
     g.add_option('--check-verbose',
                  action='store_true',
                  help='Output all test programs')
-
 
 def build(bld):
     global LAST_IDX

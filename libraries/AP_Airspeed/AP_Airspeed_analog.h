@@ -12,6 +12,7 @@ public:
     AP_Airspeed_Analog(const AP_Int8 &pin)
         : _source(NULL)
         , _pin(pin)
+        , _last_pin(-1)
     { }
 
     // probe and initialise the sensor
@@ -26,4 +27,5 @@ public:
 private:
     AP_HAL::AnalogSource *_source;
     const AP_Int8 &_pin;
+    int8_t _last_pin;
 };

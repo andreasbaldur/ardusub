@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_STORAGE_H__
+#define __AP_HAL_FLYMAPLE_STORAGE_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -30,3 +32,5 @@ private:
     uint8_t read_byte(uint16_t loc);
     void write_byte(uint16_t loc, uint8_t value);
 };
+
+#endif // __AP_HAL_FLYMAPLE_STORAGE_H__

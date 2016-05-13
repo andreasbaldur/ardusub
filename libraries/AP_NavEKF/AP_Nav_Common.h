@@ -15,7 +15,9 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef AP_Nav_Common
+#define AP_Nav_Common
 
 union nav_filter_status {
     struct {
@@ -53,3 +55,5 @@ union nav_gps_status {
     } flags;
     uint16_t value;
 };
+
+#endif // AP_Nav_Common

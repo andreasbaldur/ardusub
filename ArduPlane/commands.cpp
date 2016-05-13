@@ -71,7 +71,7 @@ void Plane::set_next_WP(const struct Location &loc)
 
 void Plane::set_guided_WP(void)
 {
-    if (g.loiter_radius < 0 || guided_WP_loc.flags.loiter_ccw) {
+    if (g.loiter_radius < 0) {
         loiter.direction = -1;
     } else {
         loiter.direction = 1;
@@ -93,12 +93,6 @@ void Plane::set_guided_WP(void)
     setup_glide_slope();
     setup_turn_angle();
 
-    // reset loiter start time.
-    loiter.start_time_ms = 0;
-
-    // start in non-VTOL mode
-    auto_state.vtol_loiter = false;
-    
     loiter_angle_reset();
 }
 

@@ -6,11 +6,6 @@
 void Plane::set_nav_controller(void)
 {
     switch ((AP_Navigation::ControllerType)g.nav_controller.get()) {
-
-    default:
-    case AP_Navigation::CONTROLLER_DEFAULT:
-        // fall through to L1 as default controller
-
     case AP_Navigation::CONTROLLER_L1:
         nav_controller = &L1_controller;
         break;
@@ -34,10 +29,7 @@ void Plane::loiter_angle_update(void)
 {
     int32_t target_bearing_cd = nav_controller->target_bearing_cd();
     int32_t loiter_delta_cd;
-    if (loiter.sum_cd == 0 && !reached_loiter_target()) {
-        // we don't start summing until we are doing the real loiter
-        loiter_delta_cd = 0;
-    } else if (loiter.sum_cd == 0) {
+    if (loiter.sum_cd == 0) {
         // use 1 cd for initial delta
         loiter_delta_cd = 1;
     } else {
@@ -84,7 +76,7 @@ void Plane::navigate()
 
 void Plane::calc_airspeed_errors()
 {
-    float airspeed_measured_cm = airspeed.get_airspeed_cm();
+    float aspeed_cm = airspeed.get_airspeed_cm();
 
     // Normal airspeed target
     target_airspeed_cm = g.airspeed_cruise_cm;
@@ -94,40 +86,15 @@ void Plane::calc_airspeed_errors()
         control_mode == CRUISE) {
         target_airspeed_cm = ((int32_t)(aparm.airspeed_max -
                                         aparm.airspeed_min) *
-                              channel_throttle->get_control_in()) +
+                              channel_throttle->control_in) +
                              ((int32_t)aparm.airspeed_min * 100);
-    }
-
-    // Landing airspeed target
-    if (control_mode == AUTO && ahrs.airspeed_sensor_enabled()) {
-        float land_airspeed = SpdHgt_Controller->get_land_airspeed();
-        switch (flight_stage) {
-        case AP_SpdHgtControl::FLIGHT_LAND_APPROACH:
-            if (land_airspeed >= 0) {
-                target_airspeed_cm = land_airspeed * 100;
-            }
-            break;
-
-        case AP_SpdHgtControl::FLIGHT_LAND_PREFLARE:
-        case AP_SpdHgtControl::FLIGHT_LAND_FINAL:
-            if (auto_state.land_pre_flare && aparm.land_pre_flare_airspeed > 0) {
-                // if we just preflared then continue using the pre-flare airspeed during final flare
-                target_airspeed_cm = aparm.land_pre_flare_airspeed * 100;
-            } else if (land_airspeed >= 0) {
-                target_airspeed_cm = land_airspeed * 100;
-            }
-            break;
-
-        default:
-            break;
-        }
     }
 
     // Set target to current airspeed + ground speed undershoot,
     // but only when this is faster than the target airspeed commanded
     // above.
     if (control_mode >= FLY_BY_WIRE_B && (g.min_gndspeed_cm > 0)) {
-        int32_t min_gnd_target_airspeed = airspeed_measured_cm + groundspeed_undershoot;
+        int32_t min_gnd_target_airspeed = aspeed_cm + groundspeed_undershoot;
         if (min_gnd_target_airspeed > target_airspeed_cm)
             target_airspeed_cm = min_gnd_target_airspeed;
     }
@@ -143,7 +110,7 @@ void Plane::calc_airspeed_errors()
 
     // use the TECS view of the target airspeed for reporting, to take
     // account of the landing speed
-    airspeed_error_cm = SpdHgt_Controller->get_target_airspeed()*100 - airspeed_measured_cm;
+    airspeed_error_cm = SpdHgt_Controller->get_target_airspeed()*100 - aspeed_cm;
 }
 
 void Plane::calc_gndspeed_undershoot()
@@ -162,27 +129,11 @@ void Plane::calc_gndspeed_undershoot()
 
 void Plane::update_loiter(uint16_t radius)
 {
-    if (radius <= 1) {
-        // if radius is <=1 then use the general loiter radius. if it's small, use default
-        radius = (abs(g.loiter_radius) <= 1) ? LOITER_RADIUS_DEFAULT : abs(g.loiter_radius);
-        if (next_WP_loc.flags.loiter_ccw == 1) {
-            loiter.direction = -1;
-        } else {
-            loiter.direction = (g.loiter_radius < 0) ? -1 : 1;
-        }
+    if (radius == 0) {
+        radius = abs(g.loiter_radius);
     }
 
-    if (loiter.start_time_ms != 0 &&
-        quadplane.available() &&
-        quadplane.guided_mode != 0) {
-        if (!auto_state.vtol_loiter) {
-            auto_state.vtol_loiter = true;
-            // reset loiter start time, so we don't consider the point
-            // reached till we get much closer
-            loiter.start_time_ms = 0;
-            quadplane.guided_start();
-        }
-    } else if (loiter.start_time_ms == 0 &&
+    if (loiter.start_time_ms == 0 &&
         control_mode == AUTO &&
         !auto_state.no_crosstrack &&
         get_distance(current_loc, next_WP_loc) > radius*2) {
@@ -194,17 +145,12 @@ void Plane::update_loiter(uint16_t radius)
     }
 
     if (loiter.start_time_ms == 0) {
-        if (reached_loiter_target() ||
-            auto_state.wp_proportion > 1) {
+        if (nav_controller->reached_loiter_target()) {
             // we've reached the target, start the timer
             loiter.start_time_ms = millis();
             if (control_mode == GUIDED) {
                 // starting a loiter in GUIDED means we just reached the target point
                 gcs_send_mission_item_reached_message(0);
-            }
-            if (quadplane.available() &&
-                quadplane.guided_mode != 0) {
-                quadplane.guided_start();
             }
         }
     }
@@ -217,7 +163,7 @@ void Plane::update_loiter(uint16_t radius)
 void Plane::update_cruise()
 {
     if (!cruise_state.locked_heading &&
-        channel_roll->get_control_in() == 0 &&
+        channel_roll->control_in == 0 &&
         rudder_input == 0 &&
         gps.status() >= AP_GPS::GPS_OK_FIX_2D &&
         gps.ground_speed() >= 3 &&
@@ -254,13 +200,13 @@ void Plane::update_fbwb_speed_height(void)
 {
     static float last_elevator_input;
     float elevator_input;
-    elevator_input = channel_pitch->get_control_in() / 4500.0f;
+    elevator_input = channel_pitch->control_in / 4500.0f;
     
     if (g.flybywire_elev_reverse) {
         elevator_input = -elevator_input;
     }
     
-    change_target_altitude(g.flybywire_climb_rate * elevator_input * perf.delta_us_fast_loop * 0.0001f);
+    change_target_altitude(g.flybywire_climb_rate * elevator_input * delta_us_fast_loop * 0.0001f);
     
     if (is_zero(elevator_input) && !is_zero(last_elevator_input)) {
         // the user has just released the elevator, lock in
@@ -297,14 +243,3 @@ void Plane::setup_turn_angle(void)
     }
 }    
 
-/*
-  see if we have reached our loiter target
- */
-bool Plane::reached_loiter_target(void)
-{
-    if (quadplane.in_vtol_auto()) {
-        return auto_state.wp_distance < 3;
-    }
-    return nav_controller->reached_loiter_target();
-}
-    

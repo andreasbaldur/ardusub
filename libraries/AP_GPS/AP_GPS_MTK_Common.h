@@ -19,7 +19,9 @@
 //	Code by Michael Smith, Jordi Munoz and Jose Julio, Craig Elder, DIYDrones.com
 //
 // Common definitions for MediaTek GPS modules.
-#pragma once
+
+#ifndef __AP_GPS_MTK_COMMON_H__
+#define __AP_GPS_MTK_COMMON_H__
 
 #define MTK_SET_BINARY		"$PGCMD,16,0,0,0,0,0*6A\r\n"
 #define MTK_SET_NMEA		"$PGCMD,16,1,1,1,1,1*6B\r\n"
@@ -39,3 +41,5 @@
 
 #define WAAS_ON         	"$PMTK301,2*2E\r\n"
 #define WAAS_OFF        	"$PMTK301,0*2C\r\n"
+
+#endif // __AP_GPS_MTK_COMMON_H__

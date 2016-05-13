@@ -26,10 +26,7 @@ uint16_t RCInput::read(uint8_t ch)
     if (ch >= SITL_RC_INPUT_CHANNELS) {
         return 0;
     }
-    if (_override[ch]) {
-        return _override[ch];
-    }
-    return _sitlState->pwm_input[ch];
+    return _override[ch]? _override[ch] : _sitlState->pwm_input[ch];
 }
 
 uint8_t RCInput::read(uint16_t* periods, uint8_t len)
@@ -38,7 +35,7 @@ uint8_t RCInput::read(uint16_t* periods, uint8_t len)
         len = SITL_RC_INPUT_CHANNELS;
     }
     for (uint8_t i=0; i<len; i++) {
-        periods[i] = read(i);
+        periods[i] = _override[i]? _override[i] : _sitlState->pwm_input[i];
     }
     return 8;
 }

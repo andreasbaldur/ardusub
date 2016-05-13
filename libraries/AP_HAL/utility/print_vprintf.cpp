@@ -39,7 +39,7 @@
 
 #include "print_vprintf.h"
 
-#include <cmath>
+#include <math.h>
 #include <stdarg.h>
 #include <string.h>
 

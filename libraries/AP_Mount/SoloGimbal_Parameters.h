@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __SOLOGIMBAL_PARAMETERS__
+#define __SOLOGIMBAL_PARAMETERS__
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
@@ -88,3 +89,6 @@ private:
 
     mavlink_channel_t _chan;
 };
+
+
+#endif // __SOLOGIMBAL_PARAMETERS__

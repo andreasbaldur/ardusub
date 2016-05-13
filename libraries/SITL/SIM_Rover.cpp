@@ -54,7 +54,7 @@ float SimRover::turn_circle(float steering)
     if (fabsf(steering) < 1.0e-6) {
         return 0;
     }
-    return turning_circle * sinf(radians(max_wheel_turn)) / sinf(radians(steering*max_wheel_turn));
+    return turning_circle * sinf(radians(35)) / sinf(radians(steering*35));
 }
 
 /*
@@ -69,7 +69,7 @@ float SimRover::calc_yaw_rate(float steering, float speed)
         return 0;
     }
     float d = turn_circle(steering);
-    float c = M_PI * d;
+    float c = M_PI_F * d;
     float t = c / speed;
     float rate = 360.0f / t;
     return rate;

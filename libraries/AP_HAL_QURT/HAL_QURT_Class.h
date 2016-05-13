@@ -12,7 +12,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef __AP_HAL_QURT_CLASS_H__
+#define __AP_HAL_QURT_CLASS_H__
 
 #include <AP_HAL/AP_HAL.h>
 
@@ -23,3 +25,6 @@ public:
     HAL_QURT();
     void run(int argc, char* const* argv, Callbacks* callbacks) const override;
 };
+
+#endif // __AP_HAL_QURT_CLASS_H__
+

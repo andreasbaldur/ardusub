@@ -13,9 +13,11 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 
-#include <cmath>
+#ifndef VECTORN_H
+#define VECTORN_H
+
+#include <math.h>
 #include <string.h>
 #if MATH_CHECK_INDEXES
 #include <assert.h>
@@ -63,7 +65,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = - _v[i];
-        }
+        }   
         return v2;
     }
 
@@ -72,7 +74,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] + v[i];
-        }
+        }   
         return v2;
     }
 
@@ -81,7 +83,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] - v[i];
-        }
+        }   
         return v2;
     }
 
@@ -90,7 +92,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] * num;
-        }
+        }   
         return v2;
     }
 
@@ -99,7 +101,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] / num;
-        }
+        }   
         return v2;
     }
 
@@ -107,7 +109,7 @@ public:
     VectorN<T,N> &operator +=(const VectorN<T,N> &v) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] += v[i];
-        }
+        }   
         return *this;
     }
 
@@ -115,7 +117,7 @@ public:
     VectorN<T,N> &operator -=(const VectorN<T,N> &v) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] -= v[i];
-        }
+        }   
         return *this;
     }
 
@@ -123,7 +125,7 @@ public:
     VectorN<T,N> &operator *=(const T num) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] *= num;
-        }
+        }   
         return *this;
     }
 
@@ -131,10 +133,12 @@ public:
     VectorN<T,N> &operator /=(const T num) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] /= num;
-        }
+        }   
         return *this;
     }
 
 private:
     T _v[N];
 };
+
+#endif // VECTORN_H

@@ -20,10 +20,11 @@
 //
 //  Swift Binary Protocol format: http://docs.swift-nav.com/
 //
-#pragma once
+
+#ifndef __AP_GPS_SBP_H__
+#define __AP_GPS_SBP_H__
 
 #include "AP_GPS.h"
-#include "GPS_Backend.h"
 
 class AP_GPS_SBP : public AP_GPS_Backend
 {
@@ -168,3 +169,5 @@ private:
    
 
 };
+
+#endif // __AP_GPS_SBP_H__

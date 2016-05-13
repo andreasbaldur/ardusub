@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _LOGSTRUCTURE_H
+#define _LOGSTRUCTURE_H
 
 /*
   unfortunately these need to be macros because of a limitation of
@@ -6,7 +7,6 @@
  */
 #define LOG_PACKET_HEADER	       uint8_t head1, head2, msgid;
 #define LOG_PACKET_HEADER_INIT(id) head1 : HEAD_BYTE1, head2 : HEAD_BYTE2, msgid : id
-#define LOG_PACKET_HEADER_LEN 3 // bytes required for LOG_PACKET_HEADER
 
 // once the logging code is all converted we will remove these from
 // this header
@@ -51,9 +51,10 @@ struct PACKED log_GPS {
     uint16_t hdop;
     int32_t  latitude;
     int32_t  longitude;
+    int32_t  rel_altitude;
     int32_t  altitude;
-    float    ground_speed;
-    float    ground_course;
+    uint32_t ground_speed;
+    int32_t  ground_course;
     float    vel_z;
     uint8_t  used;
 };
@@ -65,8 +66,6 @@ struct PACKED log_GPA {
     uint16_t hacc;
     uint16_t vacc;
     uint16_t sacc;
-    uint8_t  have_vv;
-    uint32_t sample_ms;
 };
 
 struct PACKED log_Message {
@@ -88,7 +87,7 @@ struct PACKED log_IMU {
 struct PACKED log_IMUDT {
     LOG_PACKET_HEADER;
     uint64_t time_us;
-    float delta_time, delta_vel_dt, delta_ang_dt;
+    float delta_time, delta_vel_dt;
     float delta_ang_x, delta_ang_y, delta_ang_z;
     float delta_vel_x, delta_vel_y, delta_vel_z;
 };
@@ -187,7 +186,6 @@ struct PACKED log_BARO {
     float   pressure;
     int16_t temperature;
     float   climbrate;
-    uint32_t sample_time_ms;
 };
 
 struct PACKED log_AHRS {
@@ -441,7 +439,6 @@ struct PACKED log_Compass {
     int16_t  motor_offset_y;
     int16_t  motor_offset_z;
     uint8_t  health;
-    uint32_t SUS;
 };
 
 struct PACKED log_Mode {
@@ -449,7 +446,6 @@ struct PACKED log_Mode {
     uint64_t time_us;
     uint8_t mode;
     uint8_t mode_num;
-    uint8_t mode_reason;
 };
 
 /*
@@ -631,23 +627,6 @@ struct PACKED log_RPM {
     float rpm2;
 };
 
-struct PACKED log_Rate {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    float   control_roll;
-    float   roll;
-    float   roll_out;
-    float   control_pitch;
-    float   pitch;
-    float   pitch_out;
-    float   control_yaw;
-    float   yaw;
-    float   yaw_out;
-    float   control_accel;
-    float   accel;
-    float   accel_out;
-};
-
 // #if SBP_HW_LOGGING
 
 struct PACKED log_SbpLLH {
@@ -717,13 +696,13 @@ Format characters in the format string for binary log messages
     { LOG_PARAMETER_MSG, sizeof(log_Parameter), \
       "PARM", "QNf",        "TimeUS,Name,Value" },    \
     { LOG_GPS_MSG, sizeof(log_GPS), \
-      "GPS",  "QBIHBcLLefffB", "TimeUS,Status,GMS,GWk,NSats,HDop,Lat,Lng,Alt,Spd,GCrs,VZ,U" }, \
+      "GPS",  "QBIHBcLLeeEefB", "TimeUS,Status,GMS,GWk,NSats,HDop,Lat,Lng,RAlt,Alt,Spd,GCrs,VZ,U" }, \
     { LOG_GPS2_MSG, sizeof(log_GPS), \
-      "GPS2", "QBIHBcLLefefB", "TimeUS,Status,GMS,GWk,NSats,HDop,Lat,Lng,Alt,Spd,GCrs,VZ,U" }, \
+      "GPS2", "QBIHBcLLeeEefB", "TimeUS,Status,GMS,GWk,NSats,HDop,Lat,Lng,RAlt,Alt,Spd,GCrs,VZ,U" }, \
     { LOG_GPA_MSG,  sizeof(log_GPA), \
-      "GPA",  "QCCCCBI", "TimeUS,VDop,HAcc,VAcc,SAcc,VV,SMS" }, \
+      "GPA",  "QCCCC", "TimeUS,VDop,HAcc,VAcc,SAcc" }, \
     { LOG_GPA2_MSG, sizeof(log_GPA), \
-      "GPA2", "QCCCCBI", "TimeUS,VDop,HAcc,VAcc,SAcc,VV,SMS" }, \
+      "GPA2", "QCCCC", "TimeUS,VDop,HAcc,VAcc,SAcc" }, \
     { LOG_IMU_MSG, sizeof(log_IMU), \
       "IMU",  "QffffffIIfBB",     "TimeUS,GyrX,GyrY,GyrZ,AccX,AccY,AccZ,ErrG,ErrA,Temp,GyHlt,AcHlt" }, \
     { LOG_MESSAGE_MSG, sizeof(log_Message), \
@@ -735,7 +714,7 @@ Format characters in the format string for binary log messages
     { LOG_RSSI_MSG, sizeof(log_RSSI), \
       "RSSI",  "Qf",     "TimeUS,RXRSSI" }, \
     { LOG_BARO_MSG, sizeof(log_BARO), \
-      "BARO",  "QffcfI", "TimeUS,Alt,Press,Temp,CRt,SMS" }, \
+      "BARO",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
     { LOG_POWR_MSG, sizeof(log_POWR), \
       "POWR","QCCH","TimeUS,Vcc,VServo,Flags" },  \
     { LOG_CMD_MSG, sizeof(log_Cmd), \
@@ -753,9 +732,9 @@ Format characters in the format string for binary log messages
 	{ LOG_ATTITUDE_MSG, sizeof(log_Attitude),\
       "ATT", "QccccCCCC", "TimeUS,DesRoll,Roll,DesPitch,Pitch,DesYaw,Yaw,ErrRP,ErrYaw" }, \
     { LOG_COMPASS_MSG, sizeof(log_Compass), \
-      "MAG", "QhhhhhhhhhBI",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health,S" }, \
+      "MAG", "QhhhhhhhhhB",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health" }, \
     { LOG_MODE_MSG, sizeof(log_Mode), \
-      "MODE", "QMBB",         "TimeUS,Mode,ModeNum,Rsn" }, \
+      "MODE", "QMB",         "TimeUS,Mode,ModeNum" }, \
     { LOG_RFND_MSG, sizeof(log_RFND), \
       "RFND", "QCC",         "TimeUS,Dist1,Dist2" }, \
     { LOG_DF_MAV_STATS, sizeof(log_DF_MAV_Stats), \
@@ -836,9 +815,9 @@ Format characters in the format string for binary log messages
     { LOG_ESC8_MSG, sizeof(log_Esc), \
       "ESC8",  "Qcccc", "TimeUS,RPM,Volt,Curr,Temp" }, \
     { LOG_COMPASS2_MSG, sizeof(log_Compass), \
-      "MAG2","QhhhhhhhhhBI",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health,S" }, \
+      "MAG2","QhhhhhhhhhB",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health" }, \
     { LOG_COMPASS3_MSG, sizeof(log_Compass), \
-      "MAG3","QhhhhhhhhhBI",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health,S" }, \
+      "MAG3","QhhhhhhhhhB",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health" }, \
     { LOG_ACC1_MSG, sizeof(log_ACCEL), \
       "ACC1", "QQfff",        "TimeUS,SampleUS,AccX,AccY,AccZ" }, \
     { LOG_ACC2_MSG, sizeof(log_ACCEL), \
@@ -862,17 +841,17 @@ Format characters in the format string for binary log messages
     { LOG_PIDS_MSG, sizeof(log_PID), \
       "PIDS", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
     { LOG_BAR2_MSG, sizeof(log_BARO), \
-      "BAR2",  "QffcfI", "TimeUS,Alt,Press,Temp,CRt,SMS" }, \
+      "BAR2",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
     { LOG_BAR3_MSG, sizeof(log_BARO), \
-      "BAR3",  "QffcfI", "TimeUS,Alt,Press,Temp,CRt,SMS" }, \
+      "BAR3",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
     { LOG_VIBE_MSG, sizeof(log_Vibe), \
       "VIBE", "QfffIII",     "TimeUS,VibeX,VibeY,VibeZ,Clip0,Clip1,Clip2" }, \
     { LOG_IMUDT_MSG, sizeof(log_IMUDT), \
-      "IMT","Qfffffffff","TimeUS,DelT,DelvT,DelaT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
+      "IMT","Qffffffff","TimeUS,DelT,DelvT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
     { LOG_IMUDT2_MSG, sizeof(log_IMUDT), \
-      "IMT2","Qfffffffff","TimeUS,DelT,DelvT,DelaT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
+      "IMT2","Qffffffff","TimeUS,DelT,DelvT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
     { LOG_IMUDT3_MSG, sizeof(log_IMUDT), \
-      "IMT3","Qfffffffff","TimeUS,DelT,DelvT,DelaT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
+      "IMT3","Qffffffff","TimeUS,DelT,DelvT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ" }, \
     { LOG_ORGN_MSG, sizeof(log_ORGN), \
       "ORGN","QBLLe","TimeUS,Type,Lat,Lng,Alt" }, \
     { LOG_RPM_MSG, sizeof(log_RPM), \
@@ -882,9 +861,7 @@ Format characters in the format string for binary log messages
     { LOG_GIMBAL2_MSG, sizeof(log_Gimbal2), \
       "GMB2", "IBfffffffff", "TimeMS,es,ex,ey,ez,rx,ry,rz,tx,ty,tz" }, \
     { LOG_GIMBAL3_MSG, sizeof(log_Gimbal3), \
-      "GMB3", "Ihhh", "TimeMS,rl_torque_cmd,el_torque_cmd,az_torque_cmd" }, \
-    { LOG_RATE_MSG, sizeof(log_Rate), \
-      "RATE", "Qffffffffffff",  "TimeUS,RDes,R,ROut,PDes,P,POut,YDes,Y,YOut,ADes,A,AOut" }
+      "GMB3", "Ihhh", "TimeMS,rl_torque_cmd,el_torque_cmd,az_torque_cmd" }
 
 // #if SBP_HW_LOGGING
 #define LOG_SBP_STRUCTURES \
@@ -997,10 +974,14 @@ enum LogMessages {
     LOG_GIMBAL1_MSG,
     LOG_GIMBAL2_MSG,
     LOG_GIMBAL3_MSG,
-    LOG_RATE_MSG,
+
+// message types 211 to 220 reversed for autotune use
+
 };
 
 enum LogOriginType {
     ekf_origin = 0,
     ahrs_home = 1
 };
+
+#endif

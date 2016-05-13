@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_GPIO_H__
+#define __AP_HAL_FLYMAPLE_GPIO_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -52,3 +54,5 @@ public:
 private:
     uint8_t _v;
 };
+
+#endif // __AP_HAL_FLYMAPLE_GPIO_H__

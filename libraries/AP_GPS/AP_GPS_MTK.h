@@ -22,10 +22,10 @@
 //
 // Note - see AP_GPS_MTK16.h for firmware 1.6 and later.
 //
-#pragma once
+#ifndef __AP_GPS_MTK_H__
+#define __AP_GPS_MTK_H__
 
 #include "AP_GPS.h"
-#include "GPS_Backend.h"
 #include "AP_GPS_MTK_Common.h"
 
 class AP_GPS_MTK : public AP_GPS_Backend {
@@ -80,3 +80,5 @@ private:
 
     static const char _initialisation_blob[];
 };
+
+#endif  // __AP_GPS_MTK_H__

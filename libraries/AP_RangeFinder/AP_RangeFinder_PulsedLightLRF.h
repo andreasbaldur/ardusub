@@ -1,5 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_RANGEFINDER_PULSEDLIGHTLRF_H__
+#define __AP_RANGEFINDER_PULSEDLIGHTLRF_H__
 
 #include "RangeFinder.h"
 #include "RangeFinder_Backend.h"
@@ -47,3 +49,4 @@ private:
     static bool start_reading(void);
     static bool get_reading(uint16_t &reading_cm);
 };
+#endif  // __AP_RANGEFINDER_PULSEDLIGHTLRF_H__

@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_VRBRAIN_NAMESPACE_H__
+#define __AP_HAL_VRBRAIN_NAMESPACE_H__
 
 namespace VRBRAIN {
 	class VRBRAINScheduler;
@@ -12,3 +14,6 @@ namespace VRBRAIN {
         class VRBRAINGPIO;
         class VRBRAINDigitalSource;
 }
+
+#endif //__AP_HAL_VRBRAIN_NAMESPACE_H__
+

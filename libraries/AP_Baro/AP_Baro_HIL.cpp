@@ -54,38 +54,42 @@ void AP_Baro::setHIL(float altitude_msl)
     float p = p0 * delta;
     float T = 303.16f * theta - 273.16f; // Assume 30 degrees at sea level - converted to degrees Kelvin
 
-    _hil.pressure = p;
-    _hil.temperature = T;
-    _hil.updated = true;
+    setHIL(0, p, T);
 }
 
 /*
   set HIL pressure and temperature for an instance
  */
-void AP_Baro::setHIL(uint8_t instance, float pressure, float temperature, float altitude, float climb_rate, uint32_t last_update_ms)
+void AP_Baro::setHIL(uint8_t instance, float pressure, float temperature)
 {
     if (instance >= _num_sensors) {
         // invalid
         return;
     }
-    _hil.pressure = pressure;
-    _hil.temperature = temperature;
-    _hil.altitude = altitude;
-    _hil.climb_rate = climb_rate;
-    _hil.updated = true;
-    _hil.have_alt = true;
-
-    if (last_update_ms != 0) {
-        _hil.last_update_ms = last_update_ms;
-        _hil.have_last_update = true;
-    }
+    _hil.press_buffer.push_back(pressure);
+    _hil.temp_buffer.push_back(temperature);
 }
 
 // Read the sensor
 void AP_Baro_HIL::update(void)
 {
-    if (_frontend._hil.updated) {
-        _frontend._hil.updated = false;
-        _copy_to_frontend(0, _frontend._hil.pressure, _frontend._hil.temperature);
+    float pressure = 0.0;
+    float temperature = 0.0;
+    float pressure_sum = 0.0;
+    float temperature_sum = 0.0;
+    uint32_t sum_count = 0;
+
+    while (_frontend._hil.press_buffer.is_empty() == false){
+        _frontend._hil.press_buffer.pop_front(pressure);
+        pressure_sum += pressure; // Pressure in Pascals
+        _frontend._hil.temp_buffer.pop_front(temperature);
+        temperature_sum += temperature; // degrees celcius
+        sum_count++;
+    }
+
+    if (sum_count > 0) {
+        pressure_sum /= (float)sum_count;
+        temperature_sum /= (float)sum_count;
+        _copy_to_frontend(0, pressure_sum, temperature_sum);
     }
 }

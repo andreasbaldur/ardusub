@@ -29,10 +29,9 @@ void Plane::failsafe_short_on_event(enum failsafe_state fstype)
 
     case QSTABILIZE:
     case QLOITER:
-    case QHOVER:
         failsafe.saved_mode = control_mode;
         failsafe.saved_mode_set = 1;
-        set_mode(QLAND);
+        set_mode(QHOVER);
         break;
         
     case AUTO:
@@ -51,8 +50,7 @@ void Plane::failsafe_short_on_event(enum failsafe_state fstype)
 
     case CIRCLE:
     case RTL:
-    case QLAND:
-    case QRTL:
+    case QHOVER:
     default:
         break;
     }
@@ -89,9 +87,8 @@ void Plane::failsafe_long_on_event(enum failsafe_state fstype)
         break;
 
     case QSTABILIZE:
-    case QHOVER:
     case QLOITER:
-        set_mode(QLAND);
+        set_mode(QHOVER);
         break;
         
     case AUTO:
@@ -109,8 +106,7 @@ void Plane::failsafe_long_on_event(enum failsafe_state fstype)
         break;
 
     case RTL:
-    case QLAND:
-    case QRTL:
+    case QHOVER:
     default:
         break;
     }

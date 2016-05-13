@@ -9,15 +9,13 @@
 #include "OpticalFlow.h"
 
 #include <AP_Common/AP_Common.h>
-#include <AP_HAL/I2CDevice.h>
-#include <AP_HAL/utility/OwnPtr.h>
 #include <AP_Math/AP_Math.h>
 
 class AP_OpticalFlow_Linux : public OpticalFlow_backend
 {
 public:
     // constructor
-    AP_OpticalFlow_Linux(OpticalFlow &_frontend, AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev);
+    AP_OpticalFlow_Linux(OpticalFlow &_frontend);
 
     // initialise the sensor
     void init();
@@ -71,8 +69,6 @@ private:
         int16_t gyro_temperature;               // Temperature * 100 in centi-degrees celsius
         uint8_t quality;                        // Average of quality of accumulated frames, 0: bad quality, 255: maximum quality
     } optical_flow_s;
-
-    AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
 
     // request the sensor produce a measurement, returns true on success
     bool request_measurement();

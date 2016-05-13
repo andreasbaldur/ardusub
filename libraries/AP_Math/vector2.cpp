@@ -24,7 +24,7 @@
 template <typename T>
 float Vector2<T>::length(void) const
 {
-	return norm(x, y);
+	return pythagorous2(x, y);
 }
 
 

@@ -1,5 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_RANGEFINDER_LIGHTWARESERIAL_H__
+#define __AP_RANGEFINDER_LIGHTWARESERIAL_H__
 
 #include "RangeFinder.h"
 #include "RangeFinder_Backend.h"
@@ -27,3 +29,4 @@ private:
     char linebuf[10];
     uint8_t linebuf_len = 0;
 };
+#endif  // __AP_RANGEFINDER_LIGHTWARESERIAL_H__

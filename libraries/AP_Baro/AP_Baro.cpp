@@ -45,8 +45,6 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Description: calibrated ground pressure in Pascals
     // @Units: pascals
     // @Increment: 1
-    // @ReadOnly: True
-    // @Volatile: True
     AP_GROUPINFO("ABS_PRESS", 2, AP_Baro, sensors[0].ground_pressure, 0),
 
     // @Param: TEMP
@@ -54,8 +52,6 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Description: calibrated ground temperature in degrees Celsius
     // @Units: degrees celsius
     // @Increment: 1
-    // @ReadOnly: True
-    // @Volatile: True
     AP_GROUPINFO("TEMP", 3, AP_Baro, sensors[0].ground_temperature, 0),
 
     // index 4 reserved for old AP_Int8 version in legacy FRAM
@@ -75,22 +71,21 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     AP_GROUPINFO("PRIMARY", 6, AP_Baro, _primary_baro, 0),
 
     // @Param: SPEC_GRAV
-    // @DisplayName: Specific Gravity (For water depth measurement)
+    // @DisplayName: ROV ONLY Specific Gravity
     // @Description: This sets the specific gravity of the fluid when flying an underwater ROV. Set to 1.0 for freshwater or 1.024 for saltwater
     // @Values: 1.0:Fresh Water, 1.024:Salt Water
     AP_GROUPINFO("SPEC_GRAV", 7, AP_Baro, _specific_gravity, 1.0),
 
     // @Param: BASE_PRESS
-    // @DisplayName: Base Pressure (For water depth measurement)
+    // @DisplayName: ROV ONLY Base Pressure
     // @Description: Base diving pressure. This is the ambient air pressure at launch site, and is persistent between boots.
     // @Units: pascals
     AP_GROUPINFO("BASE_PRESS", 8, AP_Baro, _base_pressure, 0.0),
 
     // @Param: BASE_RESET
-    // @DisplayName: Reset Base Pressure (For water depth measurement)
-    // @Description: Set to 1 (reset) to reset base pressure on next boot
+    // @DisplayName: ROV ONLY Reset Base Pressure
+    // @Description: Set to 1 to reset base pressure on next boot
     // @Values: 0:Keep, 1:Reset
-	// @RebootRequired: True
     AP_GROUPINFO("BASE_RESET", 9, AP_Baro, _reset_base_pressure, 1),
 
     AP_GROUPEND
@@ -275,9 +270,6 @@ float AP_Baro::get_air_density_ratio(void)
 // note that this relies on read() being called regularly to get new data
 float AP_Baro::get_climb_rate(void)
 {
-    if (_hil.have_alt) {
-        return _hil.climb_rate;
-    }
     // we use a 7 point derivative filter on the climb rate. This seems
     // to produce somewhat reasonable results on real hardware
     return _climb_rate_filter.slope() * 1.0e3f;
@@ -417,12 +409,6 @@ void AP_Baro::update(void)
                 sensors[i].altitude = altitude + _alt_offset_active;
             }
         }
-        if (_hil.have_alt) {
-            sensors[0].altitude = _hil.altitude;
-        }
-        if (_hil.have_last_update) {
-            sensors[0].last_update_ms = _hil.last_update_ms;
-        }
     }
 
     // ensure the climb rate filter is updated
@@ -430,6 +416,7 @@ void AP_Baro::update(void)
         _climb_rate_filter.update(get_altitude(), get_last_update());
     }
 
+//    _primary = _primary_baro;
     // choose primary sensor
     if (_primary_baro >= 0 && _primary_baro < _num_sensors && healthy(_primary_baro)) {
         _primary = _primary_baro;

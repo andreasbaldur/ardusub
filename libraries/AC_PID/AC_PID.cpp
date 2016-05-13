@@ -30,11 +30,11 @@ const AP_Param::GroupInfo AC_PID::var_info[] = {
     // @Description: The maximum/minimum value that the I term can output
     AP_GROUPINFO("IMAX", 5, AC_PID, _imax, 0),
 
-    // @Param: FILT
+    // @Param: FILT_HZ
     // @DisplayName: PID Input filter frequency in Hz
     // @Description: Input filter frequency in Hz
-    // @Units: Hz
-    AP_GROUPINFO("FILT", 6, AC_PID, _filt_hz, AC_PID_FILT_HZ_DEFAULT),
+    // @Unit: Hz
+    AP_GROUPINFO("FILT_HZ", 6, AC_PID, _filt_hz, AC_PID_FILT_HZ_DEFAULT),
 
     AP_GROUPEND
 };
@@ -209,6 +209,6 @@ float AC_PID::get_filt_alpha() const
     }
 
     // calculate alpha
-    float rc = 1/(M_2PI*_filt_hz);
+    float rc = 1/(M_2PI_F*_filt_hz);
     return _dt / (_dt + rc);
 }

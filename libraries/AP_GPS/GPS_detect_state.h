@@ -54,12 +54,6 @@ struct UBLOX_detect_state {
     uint8_t ck_a, ck_b;
 };
 
-struct ERB_detect_state {
-    uint8_t payload_length, payload_counter;
-    uint8_t step;
-    uint8_t ck_a, ck_b;
-};
-
 struct SBP_detect_state {
     enum {
         WAITING = 0,

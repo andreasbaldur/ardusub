@@ -3,7 +3,9 @@
 /*
   MAVLink enabled mount backend class
  */
-#pragma once
+
+#ifndef __AP_MOUNT_SOLOGIMBAL_H__
+#define __AP_MOUNT_SOLOGIMBAL_H__
 
 
 #include <AP_HAL/AP_HAL.h>
@@ -64,3 +66,5 @@ private:
 };
 
 #endif // AP_AHRS_NAVEKF_AVAILABLE
+
+#endif // __AP_MOUNT_SOLOGIMBAL_H__

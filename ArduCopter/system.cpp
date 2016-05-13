@@ -1,7 +1,6 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "Copter.h"
-#include "version.h"
 
 /*****************************************************************************
 *   The init_ardupilot function processes everything we need for an in - air restart
@@ -166,8 +165,6 @@ void Copter::init_ardupilot()
     log_init();
 #endif
 
-    GCS_MAVLINK::set_dataflash(&DataFlash);
-
     // update motor interlock state
     update_using_interlock();
 
@@ -201,13 +198,8 @@ void Copter::init_ardupilot()
     ahrs.set_optflow(&optflow);
 #endif
 
-    // init Location class
-    Location_Class::set_ahrs(&ahrs);
-#if AP_TERRAIN_AVAILABLE && AC_TERRAIN
-    Location_Class::set_terrain(&terrain);
-    wp_nav.set_terrain(&terrain);
-#endif
-
+    // initialise attitude and position controllers
+    attitude_control.set_dt(MAIN_LOOP_SECONDS);
     pos_control.set_dt(MAIN_LOOP_SECONDS);
 
     // init the optical flow sensor
@@ -413,8 +405,7 @@ void Copter::update_auto_armed()
         }
 #else
         // if motors are armed and throttle is above zero auto_armed should be true
-        // if motors are armed and we are in throw mode, then auto_ermed should be true
-        if(motors.armed() && (!ap.throttle_zero || control_mode == THROW)) {
+        if(motors.armed() && !ap.throttle_zero) {
             set_auto_armed(true);
         }
 #endif // HELI_FRAME
@@ -450,7 +441,7 @@ bool Copter::should_log(uint32_t mask)
     if (!(mask & g.log_bitmask) || in_mavlink_delay) {
         return false;
     }
-    bool ret = motors.armed() || DataFlash.log_while_disarmed();
+    bool ret = motors.armed() || (g.log_bitmask & MASK_LOG_WHEN_DISARMED) != 0;
     if (ret && !DataFlash.logging_started() && !in_log_download) {
         start_logging();
     }

@@ -17,7 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef _SOLO_GIMBAL_EKF_
+#define _SOLO_GIMBAL_EKF_
 
 #include <AP_Math/AP_Math.h>
 #include <AP_InertialSensor/AP_InertialSensor.h>
@@ -170,3 +172,5 @@ private:
     // Force symmmetry and non-negative diagonals on state covarinace matrix
     void fixCovariance();
 };
+
+#endif // _SOLO_GIMBAL_EKF_

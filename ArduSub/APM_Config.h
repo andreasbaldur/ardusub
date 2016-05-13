@@ -10,7 +10,6 @@
  *  BLUEROV_FRAME
  *  VECTORED_FRAME
  *  VECTORED6DOF_FRAME
- *  SIMPLEROV_FRAME
  */
 
 // uncomment the lines below to disable features (flash sizes listed are for APM2 boards and will underestimate savings on Pixhawk and other boards)
@@ -20,7 +19,7 @@
 //#define AC_FENCE              DISABLED            // disable fence to save 2k of flash
 //#define CAMERA                DISABLED            // disable camera trigger to save 1k of flash
 //#define CONFIG_SONAR          DISABLED            // disable sonar to save 1k of flash
-#define POSHOLD_ENABLED       DISABLED            // disable PosHold flight mode to save 4.5k of flash
+//#define POSHOLD_ENABLED       DISABLED            // disable PosHold flight mode to save 4.5k of flash
 #define AC_RALLY              DISABLED            // disable rally points library (must also disable terrain which relies on rally)
 #define AC_TERRAIN            DISABLED            // disable terrain library
 #define PARACHUTE             DISABLED            // disable parachute release to save 1k of flash
@@ -29,12 +28,11 @@
 //#define NAV_GUIDED            DISABLED            // disable external navigation computer ability to control vehicle through MAV_CMD_NAV_GUIDED mission commands
 //#define OPTFLOW               DISABLED            // disable optical flow sensor to save 5K of flash space
 //#define FRSKY_TELEM_ENABLED   DISABLED            // disable FRSky telemetry
-#define PRECISION_LANDING     DISABLED             // enable precision landing using companion computer or IRLock sensor
 
 // features below are disabled by default on all boards
 //#define SPRAYER               ENABLED             // enable the crop sprayer feature (two ESC controlled pumps the speed of which depends upon the vehicle's horizontal velocity)
+//#define PRECISION_LANDING     ENABLED             // enable precision landing using companion computer or IRLock sensor
 //#define GNDEFFECT_COMPENSATION ENABLED            // enable ground effect compensation for barometer (if propwash interferes with the barometer on the ground)
-//#define DISALLOW_GCS_MODE_CHANGE_DURING_RC_FAILSAFE   // disable mode changes from GCS during Radio failsafes.  Avoids a race condition for vehicle like Solo in which the RC and telemetry travel along the same link
 
 // other settings
 //#define THROTTLE_IN_DEADBAND   100                // redefine size of throttle deadband in pwm (0 ~ 1000)
@@ -51,4 +49,4 @@
 //#define USERHOOK_50HZLOOP userhook_50Hz();                  // for code to be run at 50hz
 //#define USERHOOK_MEDIUMLOOP userhook_MediumLoop();        // for code to be run at 10hz
 //#define USERHOOK_SLOWLOOP userhook_SlowLoop();            // for code to be run at 3.3hz
-//#define USERHOOK_SUPERSLOWLOOP userhook_SuperSlowLoop();  // for code to be run at 1hz
+#define USERHOOK_SUPERSLOWLOOP userhook_SuperSlowLoop();  // for code to be run at 1hz

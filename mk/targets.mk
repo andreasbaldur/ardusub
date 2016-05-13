@@ -20,12 +20,10 @@ flymaple-hil: flymaple
 
 linux: HAL_BOARD = HAL_BOARD_LINUX
 linux: TOOLCHAIN = NATIVE
-linux: BUILDSYS_DEPRECATED = 1
 linux: all
 
 erleboard: HAL_BOARD = HAL_BOARD_LINUX
 erleboard: TOOLCHAIN = BBONE
-erleboard: BUILDSYS_DEPRECATED = 1
 erleboard: all
 
 zynq: HAL_BOARD = HAL_BOARD_LINUX
@@ -36,54 +34,36 @@ zynq-hil : zynq
 
 pxf: HAL_BOARD = HAL_BOARD_LINUX
 pxf: TOOLCHAIN = BBONE
-pxf: BUILDSYS_DEPRECATED = 1
 pxf: all
 
 bebop: HAL_BOARD = HAL_BOARD_LINUX
 bebop: TOOLCHAIN = BBONE
 bebop: LDFLAGS += "-static"
-bebop: BUILDSYS_DEPRECATED = 1
 bebop: all
 
 minlure: HAL_BOARD = HAL_BOARD_LINUX
 minlure: TOOLCHAIN = NATIVE
-minlure: BUILDSYS_DEPRECATED = 1
 minlure: all
 
 navio: HAL_BOARD = HAL_BOARD_LINUX
 navio: TOOLCHAIN = RPI
-navio: BUILDSYS_DEPRECATED = 1
 navio: all
-
-navio2: HAL_BOARD = HAL_BOARD_LINUX
-navio2: TOOLCHAIN = RPI
-navio2: BUILDSYS_DEPRECATED = 1
-navio2: all
 
 raspilot: HAL_BOARD = HAL_BOARD_LINUX
 raspilot: TOOLCHAIN = RPI
-raspilot: BUILDSYS_DEPRECATED = 1
 raspilot: all
 
 erlebrain2: HAL_BOARD = HAL_BOARD_LINUX
 erlebrain2: TOOLCHAIN = RPI
-erlebrain2: BUILDSYS_DEPRECATED  = 1
 erlebrain2: all
 
 bbbmini: HAL_BOARD = HAL_BOARD_LINUX
 bbbmini: TOOLCHAIN = BBONE
-bbbmini: BUILDSYS_DEPRECATED  = 1
 bbbmini: all
 
 bhat: HAL_BOARD = HAL_BOARD_LINUX
 bhat: TOOLCHAIN = RPI
-bhat: BUILDSYS_DEPRECATED  = 1
 bhat: all
-
-pxfmini: HAL_BOARD = HAL_BOARD_LINUX
-pxfmini: TOOLCHAIN = RPI
-pxfmini: BUILDSYS_DEPRECATED  = 1
-pxfmini: all
 
 qflight: HAL_BOARD = HAL_BOARD_LINUX
 qflight: TOOLCHAIN = QFLIGHT
@@ -96,6 +76,10 @@ empty: all
 qurt: HAL_BOARD = HAL_BOARD_QURT
 qurt: TOOLCHAIN = QURT
 qurt: all
+
+pxfmini: HAL_BOARD = HAL_BOARD_LINUX
+pxfmini: TOOLCHAIN = RPI
+pxfmini: all
 
 # cope with HIL targets
 %-hil: EXTRAFLAGS += "-DHIL_MODE=HIL_MODE_SENSORS "
@@ -115,8 +99,8 @@ qurt: all
 %-nologging: EXTRAFLAGS += "-DLOGGING_ENABLED=DISABLED "
 
 # cope with copter and hil targets
-FRAMES = quad tri hexa y6 octa octa-quad heli single coax bluerov vectored vectored6dof simplerov obc nologging
-BOARDS = apm1 apm2 apm2beta apm1-1280 px4 px4-v1 px4-v2 px4-v4 sitl flymaple linux vrbrain vrbrain-v40 vrbrain-v45 vrbrainv-50 vrbrain-v51 vrbrain-v52 vrubrain-v51 vrubrain-v52 vrhero-v10 erle pxf navio navio2 raspilot bbbmini minlure erlebrain2 bhat qflight pxfmini
+FRAMES = quad tri hexa y6 octa octa-quad heli single coax bluerov vectored vectored6dof obc nologging
+BOARDS = apm1 apm2 apm2beta apm1-1280 px4 px4-v1 px4-v2 px4-v4 sitl flymaple linux vrbrain vrbrain-v40 vrbrain-v45 vrbrainv-50 vrbrain-v51 vrbrain-v52 vrubrain-v51 vrubrain-v52 vrhero-v10 erle pxf navio raspilot bbbmini minlure erlebrain2 bhat qflight pxfmini
 
 define frame_template
 $(1)-$(2) : EXTRAFLAGS += "-DFRAME_CONFIG=$(shell echo $(2) | tr a-z A-Z | sed s/-/_/g)_FRAME "

@@ -1,13 +1,15 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
 
 /// @file	AC_PD.h
 /// @brief	Generic PID algorithm, with EEPROM-backed storage of constants.
 
+#ifndef __AC_P_H__
+#define __AC_P_H__
+
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <stdlib.h>
-#include <cmath>
+#include <math.h>
 
 /// @class	AC_P
 /// @brief	Object managing one P controller
@@ -57,7 +59,7 @@ public:
     void operator() (const float p) { _kp = p; }
 
     // accessors
-    AP_Float    &kP() { return _kp; }
+    float       kP() const { return _kp.get(); }
     void        kP(const float v) { _kp.set(v); }
 
     static const struct AP_Param::GroupInfo        var_info[];
@@ -65,3 +67,5 @@ public:
 private:
     AP_Float        _kp;
 };
+
+#endif // __AC_P_H__

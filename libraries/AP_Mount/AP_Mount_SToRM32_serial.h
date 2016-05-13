@@ -3,7 +3,9 @@
 /*
   SToRM32 mount using serial protocol backend class
  */
-#pragma once
+
+#ifndef __AP_MOUNT_STORM32_SERIAL_H__
+#define __AP_MOUNT_STORM32_SERIAL_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_AHRS/AP_AHRS.h>
@@ -151,3 +153,5 @@ private:
     // keep the last _current_angle values
     Vector3l _current_angle;
 };
+
+#endif // __AP_MOUNT_STORM32_SERIAL_H__

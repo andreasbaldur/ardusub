@@ -1,6 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#pragma once
+#ifndef PARAMETERS_H
+#define PARAMETERS_H
 
 #include <AP_Common/AP_Common.h>
 
@@ -146,7 +147,6 @@ public:
 
         // AP_ADSB Library
         k_param_adsb,                   // 72
-		k_param_notify, 				// 73
 
         // 74: precision landing object
         k_param_precland = 74,
@@ -154,24 +154,24 @@ public:
         //
         // 75: Singlecopter, CoaxCopter
         //
-        k_param_single_servo_1 = 75,    // remove
-        k_param_single_servo_2,         // remove
-        k_param_single_servo_3,         // remove
-        k_param_single_servo_4,         // 78 - remove
+        k_param_single_servo_1 = 75,
+        k_param_single_servo_2,
+        k_param_single_servo_3,
+        k_param_single_servo_4, // 78
 
         //
         // 80: Heli
         //
-        k_param_heli_servo_1 = 80,  // remove
-        k_param_heli_servo_2,       // remove
-        k_param_heli_servo_3,       // remove
-        k_param_heli_servo_4,       // remove
+        k_param_heli_servo_1 = 80,
+        k_param_heli_servo_2,
+        k_param_heli_servo_3,
+        k_param_heli_servo_4,
         k_param_heli_pitch_ff,      // remove
         k_param_heli_roll_ff,       // remove
         k_param_heli_yaw_ff,        // remove
         k_param_heli_stab_col_min,  // remove
         k_param_heli_stab_col_max,  // remove
-        k_param_heli_servo_rsc,     // 89 = full! - remove
+        k_param_heli_servo_rsc,     // 89 = full!
 
         //
         // 90: misc2
@@ -179,8 +179,6 @@ public:
         k_param_motors = 90,
         k_param_disarm_delay,
         k_param_fs_crash_check,
-		k_param_throw_motor_start,
-		k_param_terrain_follow,		// 94
 
         // 97: RSSI
         k_param_rssi = 97,
@@ -218,8 +216,7 @@ public:
         // 135 : reserved for Solo until features merged with master
         //
         k_param_rtl_speed_cms = 135,
-        k_param_fs_batt_curr_rtl,
-		k_param_rtl_cone_slope, // 137
+        k_param_fs_batt_curr_rtl, // 136
 
         //
         // 140: Sensor parameters
@@ -323,19 +320,18 @@ public:
         k_param_land_speed,
         k_param_auto_velocity_z_min, // remove
         k_param_auto_velocity_z_max, // remove - 219
-        k_param_land_speed_high,
 
         //
         // 220: PI/D Controllers
         //
         k_param_acro_rp_p = 221,
         k_param_axis_lock_p,    // remove
-        k_param_pid_rate_roll,      // remove
-        k_param_pid_rate_pitch,     // remove
-        k_param_pid_rate_yaw,       // remove
-        k_param_p_stabilize_roll,   // remove
-        k_param_p_stabilize_pitch,  // remove
-        k_param_p_stabilize_yaw,    // remove
+        k_param_pid_rate_roll,
+        k_param_pid_rate_pitch,
+        k_param_pid_rate_yaw,
+        k_param_p_stabilize_roll,
+        k_param_p_stabilize_pitch,
+        k_param_p_stabilize_yaw,
         k_param_p_pos_xy,
         k_param_p_loiter_lon,       // remove
         k_param_pid_loiter_rate_lat,    // remove
@@ -366,24 +362,6 @@ public:
 
 		//Sub-specific parameters
 		k_param_surface_depth = 256,
-
-		// Joystick button mapping parameters
-		k_param_jbtn_0 = 261,
-		k_param_jbtn_1,
-		k_param_jbtn_2,
-		k_param_jbtn_3,
-		k_param_jbtn_4,
-		k_param_jbtn_5,
-		k_param_jbtn_6,
-		k_param_jbtn_7,
-		k_param_jbtn_8,
-		k_param_jbtn_9,
-		k_param_jbtn_10,
-		k_param_jbtn_11,
-		k_param_jbtn_12,
-		k_param_jbtn_13,
-		k_param_jbtn_14,
-		k_param_jbtn_15, // 276
     };
 
     AP_Int16        format_version;
@@ -405,7 +383,6 @@ public:
 
     AP_Int16        rtl_altitude;
     AP_Int16        rtl_speed_cms;
-    AP_Float        rtl_cone_slope;
     AP_Float        sonar_gain;
 
     AP_Int8         failsafe_battery_enabled;   // battery failsafe enabled
@@ -430,7 +407,6 @@ public:
     //
     AP_Int32        rtl_loiter_time;
     AP_Int16        land_speed;
-    AP_Int16        land_speed_high;
     AP_Int16        pilot_velocity_z_max;        // maximum vertical velocity the pilot may request
     AP_Int16        pilot_accel_z;               // vertical acceleration the pilot may request
 
@@ -475,8 +451,15 @@ public:
     AP_Float        fs_ekf_thresh;
     AP_Int16        gcs_pid_mask;
 
-    AP_Int8         throw_motor_start;
-    AP_Int8         terrain_follow;
+#if FRAME_CONFIG ==     SINGLE_FRAME
+    // Single
+    RC_Channel      single_servo_1, single_servo_2, single_servo_3, single_servo_4;     // servos for four flaps
+#endif
+
+#if FRAME_CONFIG ==     COAX_FRAME
+    // Coax copter flaps
+    RC_Channel      single_servo_1, single_servo_2; // servos for two flaps
+#endif
 
     // RC channels
     RC_Channel              rc_1;
@@ -500,24 +483,6 @@ public:
 
     AP_Int16                rc_speed; // speed of fast RC Channels in Hz
 
-    // Joystick button parameters
-    JSButton 				jbtn_0;
-    JSButton 				jbtn_1;
-    JSButton 				jbtn_2;
-    JSButton 				jbtn_3;
-    JSButton 				jbtn_4;
-    JSButton 				jbtn_5;
-    JSButton 				jbtn_6;
-    JSButton 				jbtn_7;
-    JSButton 				jbtn_8;
-    JSButton 				jbtn_9;
-    JSButton 				jbtn_10;
-    JSButton 				jbtn_11;
-    JSButton 				jbtn_12;
-    JSButton 				jbtn_13;
-    JSButton 				jbtn_14;
-    JSButton 				jbtn_15;
-
     // Acro parameters
     AP_Float                acro_rp_p;
     AP_Float                acro_yaw_p;
@@ -527,6 +492,9 @@ public:
     AP_Float                acro_expo;
 
     // PI/D controllers
+    AC_PID                  pid_rate_roll;
+    AC_PID                  pid_rate_pitch;
+    AC_PID                  pid_rate_yaw;
     AC_PI_2D                pi_vel_xy;
 
     AC_P                    p_vel_z;
@@ -537,6 +505,9 @@ public:
 #endif
 
     AC_P                    p_pos_xy;
+    AC_P                    p_stabilize_roll;
+    AC_P                    p_stabilize_pitch;
+    AC_P                    p_stabilize_yaw;
     AC_P                    p_alt_hold;
 
     // Autotune
@@ -549,6 +520,18 @@ public:
     // Note: keep initializers here in the same order as they are declared
     // above.
     Parameters() :
+
+#if FRAME_CONFIG ==     SINGLE_FRAME
+        single_servo_1        (CH_1),
+        single_servo_2        (CH_2),
+        single_servo_3        (CH_3),
+        single_servo_4        (CH_4),
+#endif
+
+#if FRAME_CONFIG ==     COAX_FRAME
+        single_servo_1        (CH_1),
+        single_servo_2        (CH_2),
+#endif
 
         rc_1                (CH_1),
         rc_2                (CH_2),
@@ -571,6 +554,10 @@ public:
 
         // PID controller	    initial P	      initial I         initial D       initial imax        initial filt hz     pid rate
         //---------------------------------------------------------------------------------------------------------------------------------
+        pid_rate_roll           (RATE_ROLL_P,     RATE_ROLL_I,      RATE_ROLL_D,    RATE_ROLL_IMAX,     RATE_ROLL_FILT_HZ,  MAIN_LOOP_SECONDS),
+        pid_rate_pitch          (RATE_PITCH_P,    RATE_PITCH_I,     RATE_PITCH_D,   RATE_PITCH_IMAX,    RATE_PITCH_FILT_HZ, MAIN_LOOP_SECONDS),
+        pid_rate_yaw            (RATE_YAW_P,      RATE_YAW_I,       RATE_YAW_D,     RATE_YAW_IMAX,      RATE_YAW_FILT_HZ,   MAIN_LOOP_SECONDS),
+
         pi_vel_xy               (VEL_XY_P,        VEL_XY_I,                         VEL_XY_IMAX,        VEL_XY_FILT_HZ,     WPNAV_LOITER_UPDATE_TIME),
 
         p_vel_z                 (VEL_Z_P),
@@ -584,10 +571,16 @@ public:
         //----------------------------------------------------------------------
         p_pos_xy                (POS_XY_P),
 
+        p_stabilize_roll        (STABILIZE_ROLL_P),
+        p_stabilize_pitch       (STABILIZE_PITCH_P),
+        p_stabilize_yaw         (STABILIZE_YAW_P),
+
         p_alt_hold              (ALT_HOLD_P)
     {
     }
 };
 
 extern const AP_Param::Info        var_info[];
+
+#endif // PARAMETERS_H
 

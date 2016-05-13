@@ -9,9 +9,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Param/AP_Param.h>
-#include <AP_Motors/AP_Motors.h>
-#include <AC_AttitudeControl/AC_AttitudeControl.h>
-#include <AC_AttitudeControl/AC_PosControl.h>
 
 #include "DataFlash.h"
 #include "DataFlash_SITL.h"
@@ -647,10 +644,6 @@ void DataFlash_Class::StartNewLog(void)
     for (uint8_t i=0; i<_next_backend; i++) {
         backends[i]->start_new_log();
     }
-    // reset sent masks
-    for (struct log_write_fmt *f = log_write_fmts; f; f=f->next) {
-        f->sent_mask = 0;
-    }
 }
 
 /*
@@ -707,15 +700,12 @@ bool DataFlash_Backend::Log_Write_Parameter(const AP_Param *ap,
 }
 
 // Write an GPS packet
-void DataFlash_Class::Log_Write_GPS(const AP_GPS &gps, uint8_t i, uint64_t time_us)
+void DataFlash_Class::Log_Write_GPS(const AP_GPS &gps, uint8_t i, int32_t relative_alt)
 {
-    if (time_us == 0) {
-        time_us = AP_HAL::micros64();
-    }
     const struct Location &loc = gps.location(i);
     struct log_GPS pkt = {
         LOG_PACKET_HEADER_INIT((uint8_t)(LOG_GPS_MSG+i)),
-        time_us       : time_us,
+        time_us       : AP_HAL::micros64(),
         status        : (uint8_t)gps.status(i),
         gps_week_ms   : gps.time_week_ms(i),
         gps_week      : gps.time_week(i),
@@ -723,9 +713,10 @@ void DataFlash_Class::Log_Write_GPS(const AP_GPS &gps, uint8_t i, uint64_t time_
         hdop          : gps.get_hdop(i),
         latitude      : loc.lat,
         longitude     : loc.lng,
+        rel_altitude  : relative_alt,
         altitude      : loc.alt,
-        ground_speed  : gps.ground_speed(i),
-        ground_course : gps.ground_course(i),
+        ground_speed  : (uint32_t)(gps.ground_speed(i) * 100),
+        ground_course : gps.ground_course_cd(i),
         vel_z         : gps.velocity(i).z,
         used          : (uint8_t)(gps.primary_sensor() == i)
     };
@@ -738,13 +729,11 @@ void DataFlash_Class::Log_Write_GPS(const AP_GPS &gps, uint8_t i, uint64_t time_
     gps.speed_accuracy(i, sacc);
     struct log_GPA pkt2 = {
         LOG_PACKET_HEADER_INIT((uint8_t)(LOG_GPA_MSG+i)),
-        time_us       : time_us,
+        time_us       : AP_HAL::micros64(),
         vdop          : gps.get_vdop(i),
         hacc          : (uint16_t)(hacc*100),
         vacc          : (uint16_t)(vacc*100),
-        sacc          : (uint16_t)(sacc*100),
-        have_vv       : (uint8_t)gps.have_vertical_velocity(i),
-        sample_ms     : gps.last_message_time_ms(i)
+        sacc          : (uint16_t)(sacc*100)
     };
     WriteBlock(&pkt2, sizeof(pkt2));
 }
@@ -821,19 +810,16 @@ void DataFlash_Class::Log_Write_RSSI(AP_RSSI &rssi)
 }
 
 // Write a BARO packet
-void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
+void DataFlash_Class::Log_Write_Baro(AP_Baro &baro)
 {
-    if (time_us == 0) {
-        time_us = AP_HAL::micros64();
-    }
+    uint64_t time_us = AP_HAL::micros64();
     struct log_BARO pkt = {
         LOG_PACKET_HEADER_INIT(LOG_BARO_MSG),
         time_us       : time_us,
         altitude      : baro.get_altitude(0),
         pressure      : baro.get_pressure(0),
-        temperature   : (int16_t)(baro.get_temperature(0) * 100 + 0.5f),
-        climbrate     : baro.get_climb_rate(),
-        sample_time_ms: baro.get_last_update(0)
+        temperature   : (int16_t)(baro.get_temperature(0) * 100),
+        climbrate     : baro.get_climb_rate()
     };
     WriteBlock(&pkt, sizeof(pkt));
 
@@ -843,9 +829,8 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
             time_us       : time_us,
             altitude      : baro.get_altitude(1),
             pressure	  : baro.get_pressure(1),
-            temperature   : (int16_t)(baro.get_temperature(1) * 100 + 0.5f),
-            climbrate     : baro.get_climb_rate(),
-            sample_time_ms: baro.get_last_update(1)
+            temperature   : (int16_t)(baro.get_temperature(1) * 100),
+            climbrate     : baro.get_climb_rate()
         };
         WriteBlock(&pkt2, sizeof(pkt2));        
     }
@@ -856,9 +841,8 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro, uint64_t time_us)
             time_us       : time_us,
             altitude      : baro.get_altitude(2),
             pressure	  : baro.get_pressure(2),
-            temperature   : (int16_t)(baro.get_temperature(2) * 100 + 0.5f),
-            climbrate     : baro.get_climb_rate(),
-            sample_time_ms: baro.get_last_update(2)
+            temperature   : (int16_t)(baro.get_temperature(2) * 100),
+            climbrate     : baro.get_climb_rate()
         };
         WriteBlock(&pkt3, sizeof(pkt3));        
     }
@@ -932,21 +916,20 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
 }
 
 // Write an accel/gyro delta time data packet
-void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t time_us, uint8_t imu_mask)
+void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins)
 {
     float delta_t = ins.get_delta_time();
     float delta_vel_t = ins.get_delta_velocity_dt(0);
-    float delta_ang_t = ins.get_delta_angle_dt(0);
     Vector3f delta_angle, delta_velocity;
     ins.get_delta_angle(0, delta_angle);
     ins.get_delta_velocity(0, delta_velocity);
 
+    uint64_t time_us = AP_HAL::micros64();
     struct log_IMUDT pkt = {
         LOG_PACKET_HEADER_INIT(LOG_IMUDT_MSG),
         time_us : time_us,
         delta_time   : delta_t,
         delta_vel_dt : delta_vel_t,
-        delta_ang_dt : delta_ang_t,
         delta_ang_x  : delta_angle.x,
         delta_ang_y  : delta_angle.y,
         delta_ang_z  : delta_angle.z,
@@ -954,15 +937,12 @@ void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t tim
         delta_vel_y  : delta_velocity.y,
         delta_vel_z  : delta_velocity.z
     };
-    if (imu_mask & 1) {
-        WriteBlock(&pkt, sizeof(pkt));
-    }
-    if ((ins.get_gyro_count() < 2 && ins.get_accel_count() < 2) || !ins.use_gyro(1)) {
+    WriteBlock(&pkt, sizeof(pkt));
+    if (ins.get_gyro_count() < 2 && ins.get_accel_count() < 2) {
         return;
     }
 
     delta_vel_t = ins.get_delta_velocity_dt(1);
-    delta_ang_t = ins.get_delta_angle_dt(1);
     if (!ins.get_delta_angle(1, delta_angle)) {
         delta_angle.zero();
     }
@@ -974,7 +954,6 @@ void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t tim
         time_us     : time_us,
         delta_time   : delta_t,
         delta_vel_dt : delta_vel_t,
-        delta_ang_dt : delta_ang_t,
         delta_ang_x  : delta_angle.x,
         delta_ang_y  : delta_angle.y,
         delta_ang_z  : delta_angle.z,
@@ -982,15 +961,12 @@ void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t tim
         delta_vel_y  : delta_velocity.y,
         delta_vel_z  : delta_velocity.z
     };
-    if (imu_mask & 2) {
-        WriteBlock(&pkt2, sizeof(pkt2));
-    }
+    WriteBlock(&pkt2, sizeof(pkt2));
 
-    if ((ins.get_gyro_count() < 3 && ins.get_accel_count() < 3) || !ins.use_gyro(2)) {
+    if (ins.get_gyro_count() < 3 && ins.get_accel_count() < 3) {
         return;
     }
     delta_vel_t = ins.get_delta_velocity_dt(1);
-    delta_ang_t = ins.get_delta_angle_dt(2);
     if (!ins.get_delta_angle(2, delta_angle)) {
         delta_angle.zero();
     }
@@ -1002,7 +978,6 @@ void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t tim
         time_us     : time_us,
         delta_time   : delta_t,
         delta_vel_dt : delta_vel_t,
-        delta_ang_dt : delta_ang_t,
         delta_ang_x  : delta_angle.x,
         delta_ang_y  : delta_angle.y,
         delta_ang_z  : delta_angle.z,
@@ -1010,9 +985,7 @@ void DataFlash_Class::Log_Write_IMUDT(const AP_InertialSensor &ins, uint64_t tim
         delta_vel_y  : delta_velocity.y,
         delta_vel_z  : delta_velocity.z
     };
-    if (imu_mask & 4) {
-        WriteBlock(&pkt3, sizeof(pkt3));
-    }
+    WriteBlock(&pkt3, sizeof(pkt3));
 }
 
 void DataFlash_Class::Log_Write_Vibration(const AP_InertialSensor &ins)
@@ -1119,7 +1092,6 @@ void DataFlash_Class::Log_Write_POS(AP_AHRS &ahrs)
 #if AP_AHRS_NAVEKF_AVAILABLE
 void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
 {
-    uint64_t time_us = AP_HAL::micros64();
     // only log EKF if enabled
     if (ahrs.get_NavEKF().enabled()) {
         // Write first EKF packet
@@ -1137,7 +1109,7 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         posDownDeriv = ahrs.get_NavEKF().getPosDownDerivative();
         struct log_EKF1 pkt = {
             LOG_PACKET_HEADER_INIT(LOG_EKF1_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             roll    : (int16_t)(100*degrees(euler.x)), // roll angle (centi-deg, displayed as deg due to format string)
             pitch   : (int16_t)(100*degrees(euler.y)), // pitch angle (centi-deg, displayed as deg due to format string)
             yaw     : (uint16_t)wrap_360_cd(100*degrees(euler.z)), // yaw angle (centi-deg, displayed as deg due to format string)
@@ -1167,7 +1139,7 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF().getMagXYZ(magXYZ);
         struct log_EKF2 pkt2 = {
             LOG_PACKET_HEADER_INIT(LOG_EKF2_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             Ratio   : (int8_t)(100*ratio),
             AZ1bias : (int8_t)(100*az1bias),
             AZ2bias : (int8_t)(100*az2bias),
@@ -1190,7 +1162,7 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF().getInnovations(velInnov, posInnov, magInnov, tasInnov);
         struct log_EKF3 pkt3 = {
             LOG_PACKET_HEADER_INIT(LOG_EKF3_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             innovVN : (int16_t)(100*velInnov.x),
             innovVE : (int16_t)(100*velInnov.y),
             innovVD : (int16_t)(100*velInnov.z),
@@ -1221,7 +1193,7 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF().getFilterGpsStatus(gpsStatus);
         struct log_EKF4 pkt4 = {
             LOG_PACKET_HEADER_INIT(LOG_EKF4_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             sqrtvarV : (int16_t)(100*velVar),
             sqrtvarP : (int16_t)(100*posVar),
             sqrtvarH : (int16_t)(100*hgtVar),
@@ -1252,7 +1224,7 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
             ahrs.get_NavEKF().getFlowDebug(normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
             struct log_EKF5 pkt5 = {
                 LOG_PACKET_HEADER_INIT(LOG_EKF5_MSG),
-                time_us : time_us,
+                time_us : AP_HAL::micros64(),
                 normInnov : (uint8_t)(MIN(100*normInnov,255)),
                 FIX : (int16_t)(1000*flowInnovX),
                 FIY : (int16_t)(1000*flowInnovY),
@@ -1275,7 +1247,6 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
 
 void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
 {
-    uint64_t time_us = AP_HAL::micros64();
 	// Write first EKF packet
     Vector3f euler;
     Vector3f posNED;
@@ -1291,7 +1262,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     posDownDeriv = ahrs.get_NavEKF2().getPosDownDerivative(0);
     struct log_EKF1 pkt = {
         LOG_PACKET_HEADER_INIT(LOG_NKF1_MSG),
-        time_us : time_us,
+        time_us : AP_HAL::micros64(),
         roll    : (int16_t)(100*degrees(euler.x)), // roll angle (centi-deg, displayed as deg due to format string)
         pitch   : (int16_t)(100*degrees(euler.y)), // pitch angle (centi-deg, displayed as deg due to format string)
         yaw     : (uint16_t)wrap_360_cd(100*degrees(euler.z)), // yaw angle (centi-deg, displayed as deg due to format string)
@@ -1322,7 +1293,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     ahrs.get_NavEKF2().getGyroScaleErrorPercentage(0,gyroScaleFactor);
     struct log_NKF2 pkt2 = {
         LOG_PACKET_HEADER_INIT(LOG_NKF2_MSG),
-        time_us : time_us,
+        time_us : AP_HAL::micros64(),
         AZbias  : (int8_t)(100*azbias),
         scaleX  : (int16_t)(100*gyroScaleFactor.x),
         scaleY  : (int16_t)(100*gyroScaleFactor.y),
@@ -1348,7 +1319,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     ahrs.get_NavEKF2().getInnovations(0,velInnov, posInnov, magInnov, tasInnov, yawInnov);
     struct log_NKF3 pkt3 = {
         LOG_PACKET_HEADER_INIT(LOG_NKF3_MSG),
-        time_us : time_us,
+        time_us : AP_HAL::micros64(),
         innovVN : (int16_t)(100*velInnov.x),
         innovVE : (int16_t)(100*velInnov.y),
         innovVD : (int16_t)(100*velInnov.z),
@@ -1384,7 +1355,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     uint8_t primaryIndex = ahrs.get_NavEKF2().getPrimaryCoreIndex();
     struct log_NKF4 pkt4 = {
         LOG_PACKET_HEADER_INIT(LOG_NKF4_MSG),
-        time_us : time_us,
+        time_us : AP_HAL::micros64(),
         sqrtvarV : (int16_t)(100*velVar),
         sqrtvarP : (int16_t)(100*posVar),
         sqrtvarH : (int16_t)(100*hgtVar),
@@ -1414,7 +1385,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF2().getFlowDebug(-1,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
         struct log_EKF5 pkt5 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF5_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             normInnov : (uint8_t)(MIN(100*normInnov,255)),
             FIX : (int16_t)(1000*flowInnovX),
             FIY : (int16_t)(1000*flowInnovY),
@@ -1438,7 +1409,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         posDownDeriv = ahrs.get_NavEKF2().getPosDownDerivative(1);
         struct log_EKF1 pkt6 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF6_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             roll    : (int16_t)(100*degrees(euler.x)), // roll angle (centi-deg, displayed as deg due to format string)
             pitch   : (int16_t)(100*degrees(euler.y)), // pitch angle (centi-deg, displayed as deg due to format string)
             yaw     : (uint16_t)wrap_360_cd(100*degrees(euler.z)), // yaw angle (centi-deg, displayed as deg due to format string)
@@ -1464,7 +1435,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         magIndex = ahrs.get_NavEKF2().getActiveMag(1);
         struct log_NKF2 pkt7 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF7_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             AZbias  : (int8_t)(100*azbias),
             scaleX  : (int16_t)(100*gyroScaleFactor.x),
             scaleY  : (int16_t)(100*gyroScaleFactor.y),
@@ -1485,7 +1456,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF2().getInnovations(1,velInnov, posInnov, magInnov, tasInnov, yawInnov);
         struct log_NKF3 pkt8 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF8_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             innovVN : (int16_t)(100*velInnov.x),
             innovVE : (int16_t)(100*velInnov.y),
             innovVD : (int16_t)(100*velInnov.z),
@@ -1510,7 +1481,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF2().getTiltError(1,tiltError);
         struct log_NKF4 pkt9 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF9_MSG),
-            time_us : time_us,
+            time_us : AP_HAL::micros64(),
             sqrtvarV : (int16_t)(100*velVar),
             sqrtvarP : (int16_t)(100*posVar),
             sqrtvarH : (int16_t)(100*hgtVar),
@@ -1584,7 +1555,7 @@ void DataFlash_Class::Log_Write_CameraInfo(enum LogMessages msg, const AP_AHRS &
     }
 
     struct log_Camera pkt = {
-        LOG_PACKET_HEADER_INIT(static_cast<uint8_t>(msg)),
+        LOG_PACKET_HEADER_INIT(msg),
         time_us     : AP_HAL::micros64(),
         gps_time    : gps.time_week_ms(),
         gps_week    : gps.time_week(),
@@ -1648,17 +1619,14 @@ void DataFlash_Class::Log_Write_Current(const AP_BattMonitor &battery, int16_t t
 }
 
 // Write a Compass packet
-void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us)
+void DataFlash_Class::Log_Write_Compass(const Compass &compass)
 {
-    if (time_us == 0) {
-        time_us = AP_HAL::micros64();
-    }
     const Vector3f &mag_field = compass.get_field(0);
     const Vector3f &mag_offsets = compass.get_offsets(0);
     const Vector3f &mag_motor_offsets = compass.get_motor_offsets(0);   
     struct log_Compass pkt = {
         LOG_PACKET_HEADER_INIT(LOG_COMPASS_MSG),
-        time_us         : time_us,
+        time_us         : AP_HAL::micros64(),
         mag_x           : (int16_t)mag_field.x,
         mag_y           : (int16_t)mag_field.y,
         mag_z           : (int16_t)mag_field.z,
@@ -1668,8 +1636,7 @@ void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us
         motor_offset_x  : (int16_t)mag_motor_offsets.x,
         motor_offset_y  : (int16_t)mag_motor_offsets.y,
         motor_offset_z  : (int16_t)mag_motor_offsets.z,
-        health          : (uint8_t)compass.healthy(0),
-        SUS             : compass.last_update_usec(0)
+        health          : (uint8_t)compass.healthy(0)
     };
     WriteBlock(&pkt, sizeof(pkt));
 
@@ -1679,7 +1646,7 @@ void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us
         const Vector3f &mag_motor_offsets2 = compass.get_motor_offsets(1);   
         struct log_Compass pkt2 = {
             LOG_PACKET_HEADER_INIT(LOG_COMPASS2_MSG),
-            time_us         : time_us,
+            time_us         : AP_HAL::micros64(),
             mag_x           : (int16_t)mag_field2.x,
             mag_y           : (int16_t)mag_field2.y,
             mag_z           : (int16_t)mag_field2.z,
@@ -1689,8 +1656,7 @@ void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us
             motor_offset_x  : (int16_t)mag_motor_offsets2.x,
             motor_offset_y  : (int16_t)mag_motor_offsets2.y,
             motor_offset_z  : (int16_t)mag_motor_offsets2.z,
-            health          : (uint8_t)compass.healthy(1),
-            SUS             : compass.last_update_usec(1)
+            health          : (uint8_t)compass.healthy(1)
         };
         WriteBlock(&pkt2, sizeof(pkt2));
     }
@@ -1701,7 +1667,7 @@ void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us
         const Vector3f &mag_motor_offsets3 = compass.get_motor_offsets(2);   
         struct log_Compass pkt3 = {
             LOG_PACKET_HEADER_INIT(LOG_COMPASS3_MSG),
-            time_us         : time_us,
+            time_us         : AP_HAL::micros64(),
             mag_x           : (int16_t)mag_field3.x,
             mag_y           : (int16_t)mag_field3.y,
             mag_z           : (int16_t)mag_field3.z,
@@ -1711,22 +1677,20 @@ void DataFlash_Class::Log_Write_Compass(const Compass &compass, uint64_t time_us
             motor_offset_x  : (int16_t)mag_motor_offsets3.x,
             motor_offset_y  : (int16_t)mag_motor_offsets3.y,
             motor_offset_z  : (int16_t)mag_motor_offsets3.z,
-            health          : (uint8_t)compass.healthy(2),
-            SUS             : compass.last_update_usec(2)
+            health          : (uint8_t)compass.healthy(2)
         };
         WriteBlock(&pkt3, sizeof(pkt3));
     }
 }
 
 // Write a mode packet.
-bool DataFlash_Backend::Log_Write_Mode(uint8_t mode, uint8_t reason)
+bool DataFlash_Backend::Log_Write_Mode(uint8_t mode)
 {
     struct log_Mode pkt = {
         LOG_PACKET_HEADER_INIT(LOG_MODE_MSG),
         time_us  : AP_HAL::micros64(),
         mode     : mode,
-        mode_num : mode,
-        mode_reason : reason
+        mode_num : mode
     };
     return WriteCriticalBlock(&pkt, sizeof(pkt));
 }
@@ -1830,31 +1794,4 @@ void DataFlash_Class::Log_Write_RPM(const AP_RPM &rpm_sensor)
         rpm2        : rpm_sensor.get_rpm(1)
     };
     WriteBlock(&pkt, sizeof(pkt));
-}
-
-// Write an rate packet
-void DataFlash_Class::Log_Write_Rate(const AP_AHRS &ahrs,
-                                     const AP_Motors &motors,
-                                     const AC_AttitudeControl &attitude_control,
-                                     const AC_PosControl &pos_control)
-{
-    const Vector3f &rate_targets = attitude_control.rate_bf_targets();
-    const Vector3f &accel_target = pos_control.get_accel_target();
-    struct log_Rate pkt_rate = {
-        LOG_PACKET_HEADER_INIT(LOG_RATE_MSG),
-        time_us         : AP_HAL::micros64(),
-        control_roll    : (float)rate_targets.x,
-        roll            : (float)(ahrs.get_gyro().x * AC_ATTITUDE_CONTROL_DEGX100),
-        roll_out        : motors.get_roll(),
-        control_pitch   : (float)rate_targets.y,
-        pitch           : (float)(ahrs.get_gyro().y * AC_ATTITUDE_CONTROL_DEGX100),
-        pitch_out       : motors.get_pitch(),
-        control_yaw     : (float)rate_targets.z,
-        yaw             : (float)(ahrs.get_gyro().z * AC_ATTITUDE_CONTROL_DEGX100),
-        yaw_out         : motors.get_yaw(),
-        control_accel   : (float)accel_target.z,
-        accel           : (float)(-(ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f),
-        accel_out       : motors.get_throttle()
-    };
-    WriteBlock(&pkt_rate, sizeof(pkt_rate));
 }

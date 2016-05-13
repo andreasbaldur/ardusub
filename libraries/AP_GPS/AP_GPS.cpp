@@ -19,20 +19,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Notify/AP_Notify.h>
-#include <GCS_MAVLink/GCS.h>
-
-#include "AP_GPS_ERB.h"
-#include "AP_GPS_GSOF.h"
-#include "AP_GPS_MTK.h"
-#include "AP_GPS_MTK19.h"
-#include "AP_GPS_NMEA.h"
-#include "AP_GPS_PX4.h"
-#include "AP_GPS_QURT.h"
-#include "AP_GPS_SBF.h"
-#include "AP_GPS_SBP.h"
-#include "AP_GPS_SIRF.h"
-#include "AP_GPS_UBLOX.h"
-#include "GPS_Backend.h"
 
 extern const AP_HAL::HAL &hal;
 
@@ -213,7 +199,7 @@ AP_GPS::detect_instance(uint8_t instance)
     if (_type[instance] == GPS_TYPE_PX4) {
         // check for explicitely chosen PX4 GPS beforehand
         // it is not possible to autodetect it, nor does it require a real UART
-        _broadcast_gps_type("PX4", instance, -1); // baud rate isn't valid
+        hal.console->print(" PX4 ");
         new_gps = new AP_GPS_PX4(*this, state[instance], _port[instance]);
         goto found_gps;
     }
@@ -221,7 +207,7 @@ AP_GPS::detect_instance(uint8_t instance)
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_QURT
     if (_type[instance] == GPS_TYPE_QURT) {
-        _broadcast_gps_type("QURTGPS", instance, -1); // baud rate isn't valid
+        hal.console->print(" QURTGPS ");
         new_gps = new AP_GPS_QURT(*this, state[instance], _port[instance]);
         goto found_gps;
     }
@@ -238,10 +224,10 @@ AP_GPS::detect_instance(uint8_t instance)
 
 	// by default the sbf/trimble gps outputs no data on its port, until configured.
 	if (_type[instance] == GPS_TYPE_SBF) {
-		_broadcast_gps_type("SBF", instance, -1); // baud rate isn't valid
+		hal.console->print(" SBF ");
 		new_gps = new AP_GPS_SBF(*this, state[instance], _port[instance]);
 	} else if ((_type[instance] == GPS_TYPE_GSOF)) {
-		_broadcast_gps_type("GSOF", instance, -1); // baud rate isn't valid
+		hal.console->print(" GSOF ");
 		new_gps = new AP_GPS_GSOF(*this, state[instance], _port[instance]);
 	}
 
@@ -284,41 +270,36 @@ AP_GPS::detect_instance(uint8_t instance)
         if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_UBLOX) &&
             _baudrates[dstate->last_baud] >= 38400 &&
             AP_GPS_UBLOX::_detect(dstate->ublox_detect_state, data)) {
-            _broadcast_gps_type("u-blox", instance, dstate->last_baud);
+            hal.console->print(" ublox ");
             new_gps = new AP_GPS_UBLOX(*this, state[instance], _port[instance]);
         } 
 		else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_MTK19) &&
                  AP_GPS_MTK19::_detect(dstate->mtk19_detect_state, data)) {
-			_broadcast_gps_type("MTK19", instance, dstate->last_baud);
+			hal.console->print(" MTK19 ");
 			new_gps = new AP_GPS_MTK19(*this, state[instance], _port[instance]);
 		} 
 		else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_MTK) &&
                  AP_GPS_MTK::_detect(dstate->mtk_detect_state, data)) {
-			_broadcast_gps_type("MTK", instance, dstate->last_baud);
+			hal.console->print(" MTK ");
 			new_gps = new AP_GPS_MTK(*this, state[instance], _port[instance]);
 		}
         else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_SBP) &&
                  AP_GPS_SBP::_detect(dstate->sbp_detect_state, data)) {
-            _broadcast_gps_type("SBP", instance, dstate->last_baud);
+            hal.console->print(" SBP ");
             new_gps = new AP_GPS_SBP(*this, state[instance], _port[instance]);
         }
 		// save a bit of code space on a 1280
 		else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_SIRF) &&
                  AP_GPS_SIRF::_detect(dstate->sirf_detect_state, data)) {
-			_broadcast_gps_type("SIRF", instance, dstate->last_baud);
+			hal.console->print(" SIRF ");
 			new_gps = new AP_GPS_SIRF(*this, state[instance], _port[instance]);
 		}
-        else if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_ERB) &&
-                 AP_GPS_ERB::_detect(dstate->erb_detect_state, data)) {
-            _broadcast_gps_type("ERB", instance, dstate->last_baud);
-            new_gps = new AP_GPS_ERB(*this, state[instance], _port[instance]);
-        }
 		else if (now - dstate->detect_started_ms > (ARRAY_SIZE(_baudrates) * GPS_BAUD_TIME_MS)) {
 			// prevent false detection of NMEA mode in
 			// a MTK or UBLOX which has booted in NMEA mode
 			if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_NMEA) &&
                 AP_GPS_NMEA::_detect(dstate->nmea_detect_state, data)) {
-				_broadcast_gps_type("NMEA", instance, dstate->last_baud);
+				hal.console->print(" NMEA ");
 				new_gps = new AP_GPS_NMEA(*this, state[instance], _port[instance]);
 			}
 		}
@@ -467,7 +448,7 @@ AP_GPS::update(void)
 void 
 AP_GPS::setHIL(uint8_t instance, GPS_Status _status, uint64_t time_epoch_ms, 
                const Location &_location, const Vector3f &_velocity, uint8_t _num_sats, 
-               uint16_t hdop)
+               uint16_t hdop, bool _have_vertical_velocity)
 {
     if (instance >= GPS_MAX_INSTANCES) {
         return;
@@ -478,10 +459,11 @@ AP_GPS::setHIL(uint8_t instance, GPS_Status _status, uint64_t time_epoch_ms,
     istate.location = _location;
     istate.location.options = 0;
     istate.velocity = _velocity;
-    istate.ground_speed = norm(istate.velocity.x, istate.velocity.y);
-    istate.ground_course = wrap_360(degrees(atan2f(istate.velocity.y, istate.velocity.x)));
+    istate.ground_speed = pythagorous2(istate.velocity.x, istate.velocity.y);
+    istate.ground_course_cd = wrap_360_cd(degrees(atan2f(istate.velocity.y, istate.velocity.x)) * 100UL);
     istate.hdop = hdop;
     istate.num_sats = _num_sats;
+    istate.have_vertical_velocity |= _have_vertical_velocity;
     istate.last_gps_time_ms = tnow;
     uint64_t gps_time_ms = time_epoch_ms - (17000ULL*86400ULL + 52*10*7000ULL*86400ULL - 15000ULL);
     istate.time_week     = gps_time_ms / (86400*7*(uint64_t)1000);
@@ -489,24 +471,6 @@ AP_GPS::setHIL(uint8_t instance, GPS_Status _status, uint64_t time_epoch_ms,
     timing[instance].last_message_time_ms = tnow;
     timing[instance].last_fix_time_ms = tnow;
     _type[instance].set(GPS_TYPE_HIL);
-}
-
-// set accuracy for HIL
-void AP_GPS::setHIL_Accuracy(uint8_t instance, float vdop, float hacc, float vacc, float sacc, bool _have_vertical_velocity, uint32_t sample_ms)
-{
-    GPS_State &istate = state[instance];
-    istate.vdop = vdop * 100;
-    istate.horizontal_accuracy = hacc;
-    istate.vertical_accuracy = vacc;
-    istate.speed_accuracy = sacc;
-    istate.have_horizontal_accuracy = true;
-    istate.have_vertical_accuracy = true;
-    istate.have_speed_accuracy = true;
-    istate.have_vertical_velocity |= _have_vertical_velocity;
-    if (sample_ms != 0) {
-        timing[instance].last_message_time_ms = sample_ms;
-        timing[instance].last_fix_time_ms = sample_ms;
-    }
 }
 
 /**
@@ -578,7 +542,7 @@ AP_GPS::send_mavlink_gps_raw(mavlink_channel_t chan)
         get_hdop(0),
         get_vdop(0),
         ground_speed(0)*100,  // cm/s
-        ground_course(0)*100, // 1/100 degrees,
+        ground_course_cd(0), // 1/100 degrees,
         num_sats(0));
 }
 
@@ -606,7 +570,7 @@ AP_GPS::send_mavlink_gps2_raw(mavlink_channel_t chan)
         get_hdop(1),
         get_vdop(1),
         ground_speed(1)*100,  // cm/s
-        ground_course(1)*100, // 1/100 degrees,
+        ground_course_cd(1), // 1/100 degrees,
         num_sats(1),
         0,
         0);
@@ -629,41 +593,11 @@ AP_GPS::send_mavlink_gps2_rtk(mavlink_channel_t chan)
 }
 
 uint8_t
-AP_GPS::first_unconfigured_gps(void) const
-{
+AP_GPS::first_unconfigured_gps(void) const {
     for(int i = 0; i < GPS_MAX_INSTANCES; i++) {
         if(_type[i] != GPS_TYPE_NONE && (drivers[i] == NULL || !drivers[i]->is_configured())) {
             return i;
         }
     }
     return GPS_ALL_CONFIGURED;
-}
-
-void
-AP_GPS::broadcast_first_configuration_failure_reason(void) const {
-    uint8_t unconfigured = first_unconfigured_gps();
-    if (drivers[unconfigured] == NULL) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "GPS %d: was not found", unconfigured + 1);
-    } else {
-        drivers[unconfigured]->broadcast_configuration_failure_reason();
-    }
-}
-
-void
-AP_GPS::_broadcast_gps_type(const char *type, uint8_t instance, int8_t baud_index)
-{
-    char buffer[64];
-    if (baud_index >= 0) {
-        hal.util->snprintf(buffer, sizeof(buffer),
-                 "GPS %d: detected as %s at %d baud",
-                 instance,
-                 type,
-                 _baudrates[baud_index]);
-    } else {
-        hal.util->snprintf(buffer, sizeof(buffer),
-                 "GPS %d: detected as %s",
-                 instance,
-                 type);
-    }
-    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, buffer);
 }

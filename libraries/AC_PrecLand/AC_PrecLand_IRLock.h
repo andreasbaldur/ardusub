@@ -1,5 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+#ifndef __AC_PRECLAND_IRLOCK_H__
+#define __AC_PRECLAND_IRLOCK_H__
 
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
@@ -44,3 +45,4 @@ private:
 
 };
 #endif
+#endif	// __AC_PRECLAND_IRLOCK_H__

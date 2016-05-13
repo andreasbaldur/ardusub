@@ -42,9 +42,8 @@ void Sub::circle_run()
     pos_control.set_accel_z(g.pilot_accel_z);
     
     // if not auto armed or motor interlock not enabled set throttle to zero and exit immediately
-    if (!motors.armed() || !ap.auto_armed || ap.land_complete || !motors.get_interlock()) {
+    if(!ap.auto_armed || ap.land_complete || !motors.get_interlock()) {
         // To-Do: add some initialisation of position controllers
-        motors.set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
     	// multicopters do not stabilize roll/pitch/yaw when disarmed
         attitude_control.set_throttle_out_unstabilized(0,true,g.throttle_filt);
 
@@ -55,13 +54,13 @@ void Sub::circle_run()
     // process pilot inputs
     if (!failsafe.radio) {
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->control_in);
         if (!is_zero(target_yaw_rate)) {
             circle_pilot_yaw_override = true;
         }
 
         // get pilot desired climb rate
-        target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
+        target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->control_in);
 
         // check for pilot requested take-off
         if (ap.land_complete && target_climb_rate > 0) {
@@ -71,9 +70,6 @@ void Sub::circle_run()
             set_throttle_takeoff();
         }
     }
-
-    // set motors to full range
-    motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
     // run circle controller
     circle_nav.update();

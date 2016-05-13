@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <linux/limits.h>
 #include <string.h>
-#include <cmath>
+#include <math.h>
 #include <stdlib.h>
 #include "Heat_Pwm.h"
 

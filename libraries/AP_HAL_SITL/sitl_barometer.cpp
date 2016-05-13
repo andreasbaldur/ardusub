@@ -21,7 +21,7 @@ extern const AP_HAL::HAL& hal;
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <cmath>
+#include <math.h>
 
 /*
   setup the barometer with new input

@@ -58,9 +58,14 @@ uint8_t RCInput::read(uint16_t* periods, uint8_t len)
 {
     uint8_t i;
     for (i=0; i<len; i++) {
-        periods[i] = read(i);
+        if((periods[i] = read(i))){
+            continue;
+        }
+        else{
+            break;
+        }
     }
-    return len;
+    return (i+1);
 }
 
 bool RCInput::set_overrides(int16_t *overrides, uint8_t len) 

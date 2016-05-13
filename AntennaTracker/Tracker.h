@@ -1,9 +1,12 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
+#define THISFIRMWARE "AntennaTracker V0.7.6"
+#define FIRMWARE_VERSION 0,7,6,FIRMWARE_VERSION_TYPE_DEV
+
 /*
    Lead developers: Matthew Ridley and Andrew Tridgell
-
-   Please contribute your ideas! See http://dev.ardupilot.org for details
+ 
+   Please contribute your ideas! See http://dev.ardupilot.com for details
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,13 +21,12 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 // Header includes
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmath>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -102,7 +104,7 @@ private:
     // has a log download started?
     bool in_log_download = false;
     bool logging_started = false;
-    DataFlash_Class DataFlash;
+    DataFlash_Class DataFlash{FIRMWARE_STRING};
 
     AP_GPS gps;
 
@@ -200,6 +202,7 @@ private:
     void send_radio_out(mavlink_channel_t chan);
     void send_hwstatus(mavlink_channel_t chan);
     void send_waypoint_request(mavlink_channel_t chan);
+    void send_statustext(mavlink_channel_t chan);
     void send_nav_controller_output(mavlink_channel_t chan);
     void send_simstate(mavlink_channel_t chan);
     void mavlink_check_target(const mavlink_message_t* msg);

@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_SCHEDULER_H__
+#define __AP_HAL_FLYMAPLE_SCHEDULER_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -65,3 +67,5 @@ private:
     static AP_HAL::MemberProc _timer_proc[FLYMAPLE_SCHEDULER_MAX_TIMER_PROCS];
     static uint8_t _num_timer_procs;
 };
+
+#endif // __AP_HAL_FLYMAPLE_SCHEDULER_H__

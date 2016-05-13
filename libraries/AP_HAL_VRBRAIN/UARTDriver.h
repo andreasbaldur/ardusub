@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_VRBRAIN_UARTDRIVER_H__
+#define __AP_HAL_VRBRAIN_UARTDRIVER_H__
 
 #include "AP_HAL_VRBRAIN.h"
 #include <systemlib/perf_counter.h>
@@ -75,3 +77,5 @@ private:
     uint32_t _total_written;
     enum flow_control _flow_control;
 };
+
+#endif // __AP_HAL_VRBRAIN_UARTDRIVER_H__

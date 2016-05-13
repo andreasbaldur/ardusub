@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_PX4_UARTDRIVER_H__
+#define __AP_HAL_PX4_UARTDRIVER_H__
 
 #include "AP_HAL_PX4.h"
 #include <systemlib/perf_counter.h>
@@ -78,3 +80,5 @@ private:
     pid_t _uart_owner_pid;
 
 };
+
+#endif // __AP_HAL_PX4_UARTDRIVER_H__

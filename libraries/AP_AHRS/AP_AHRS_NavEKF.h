@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
-
+#ifndef __AP_AHRS_NAVEKF_H__
+#define __AP_AHRS_NAVEKF_H__
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -36,15 +36,6 @@
 
 #define AP_AHRS_NAVEKF_AVAILABLE 1
 #define AP_AHRS_NAVEKF_SETTLE_TIME_MS 20000     // time in milliseconds the ekf needs to settle after being started
-
-/*
-  we are too close to running out of flash on px4 with plane firmware, so disable it
- */
-#if APM_BUILD_TYPE(APM_BUILD_ArduPlane) && CONFIG_HAL_BOARD == HAL_BOARD_PX4
-#define AP_AHRS_WITH_EKF1 0
-#else
-#define AP_AHRS_WITH_EKF1 1
-#endif
 
 class AP_AHRS_NavEKF : public AP_AHRS_DCM
 {
@@ -164,7 +155,7 @@ public:
 
     // get compass offset estimates
     // true if offsets are valid
-    bool getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets);
+    bool getMagOffsets(Vector3f &magOffsets);
 
     // report any reason for why the backend is refusing to initialise
     const char *prearm_failure_reason(void) const override;
@@ -215,19 +206,9 @@ public:
     void setTakeoffExpected(bool val);
     void setTouchdownExpected(bool val);
 
-    bool getGpsGlitchStatus();
-
-    // used by Replay to force start at right timestamp
-    void force_ekf_start(void) { force_ekf = true; }
-
-    // is the EKF backend doing its own sensor logging?
-    bool have_ekf_logging(void) const override;
-    
 private:
     enum EKF_TYPE {EKF_TYPE_NONE=0,
-#if AP_AHRS_WITH_EKF1
                    EKF_TYPE1=1,
-#endif
                    EKF_TYPE2=2
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
                    ,EKF_TYPE_SITL=10
@@ -236,14 +217,13 @@ private:
     EKF_TYPE active_EKF_type(void) const;
 
     bool always_use_EKF() const {
-        return _ekf_flags & FLAG_ALWAYS_USE_EKF;
+        return _flags & FLAG_ALWAYS_USE_EKF;
     }
 
     NavEKF &EKF1;
     NavEKF2 &EKF2;
-    bool ekf1_started:1;
-    bool ekf2_started:1;
-    bool force_ekf:1;
+    bool ekf1_started = false;
+    bool ekf2_started = false;
     Matrix3f _dcm_matrix;
     Vector3f _dcm_attitude;
     Vector3f _gyro_bias;
@@ -252,7 +232,7 @@ private:
     Vector3f _accel_ef_ekf_blended;
     const uint16_t startup_delay_ms = 1000;
     uint32_t start_time_ms = 0;
-    Flags _ekf_flags;
+    Flags _flags;
 
     uint8_t ekf_type(void) const;
     void update_DCM(void);
@@ -265,3 +245,5 @@ private:
 #endif    
 };
 #endif
+
+#endif // __AP_AHRS_NAVEKF_H__

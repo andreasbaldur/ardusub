@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_RCINPUT_H__
+#define __AP_HAL_FLYMAPLE_RCINPUT_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -48,3 +50,5 @@ private:
     /* override state */
     uint16_t _override[FLYMAPLE_RC_INPUT_NUM_CHANNELS]; 
 };
+
+#endif // __AP_HAL_FLYMAPLE_RCINPUT_H__

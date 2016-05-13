@@ -14,7 +14,8 @@
  * - provides access to the rally points, including logic to find the nearest one
  *
  */
-#pragma once
+#ifndef AP_Rally_h
+#define AP_Rally_h
 
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
@@ -74,3 +75,6 @@ private:
 
     uint32_t _last_change_time_ms;
 };
+
+
+#endif // AP_Rally_h

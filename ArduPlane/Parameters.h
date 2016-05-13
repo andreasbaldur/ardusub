@@ -1,5 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef PARAMETERS_H
+#define PARAMETERS_H
 
 #include <AP_Common/AP_Common.h>
 
@@ -146,14 +148,11 @@ public:
         k_param_parachute_channel,
         k_param_crash_accel_threshold,
         k_param_override_safety,
-        k_param_land_throttle_slewrate, // 104
 
         // 105: Extra parameters
         k_param_fence_retalt = 105,
         k_param_fence_autoenable,
         k_param_fence_ret_rally,
-        k_param_q_attitude_control,
-        k_param_takeoff_pitch_limit_reduction_sec,
 
         // 110: Telemetry control
         //
@@ -273,7 +272,6 @@ public:
         k_param_long_fs_timeout,
         k_param_rc_13,
         k_param_rc_14,
-        k_param_tuning,
 
         //
         // 200: Feed-forward gains
@@ -286,8 +284,6 @@ public:
         k_param_quadplane,
         k_param_rtl_radius,
         k_param_land_then_servos_neutral,
-        k_param_rc_15,
-        k_param_rc_16,
 
         //
         // 210: flight modes
@@ -496,8 +492,6 @@ public:
     AP_Float takeoff_tdrag_speed1;
     AP_Float takeoff_rotate_speed;
     AP_Int8 takeoff_throttle_slewrate;
-    AP_Float takeoff_pitch_limit_reduction_sec;
-    AP_Int8 land_throttle_slewrate;
     AP_Int8 level_roll_limit;
     AP_Int8 flapin_channel;
     AP_Int8 flaperon_output;
@@ -532,8 +526,6 @@ public:
     RC_Channel_aux rc_12;
     RC_Channel_aux rc_13;
     RC_Channel_aux rc_14;
-    RC_Channel_aux rc_15;
-    RC_Channel_aux rc_16;
     uint8_t _dummy;
 
     Parameters() :
@@ -553,10 +545,10 @@ public:
         rc_12                                   (CH_12),
         rc_13                                   (CH_13),
         rc_14                                   (CH_14),
-        rc_15                                   (CH_15),
-        rc_16                                   (CH_16),
         _dummy(0)
         {}
 };
 
 extern const AP_Param::Info var_info[];
+
+#endif // PARAMETERS_H

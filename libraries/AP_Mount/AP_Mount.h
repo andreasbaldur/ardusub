@@ -19,7 +19,8 @@
 * Comments: All angles in degrees * 100, distances in meters*
 *			unless otherwise stated.						*
 ************************************************************/
-#pragma once
+#ifndef __AP_MOUNT_H__
+#define __AP_MOUNT_H__
 
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
@@ -185,3 +186,5 @@ protected:
 
     DataFlash_Class *_dataflash;
 };
+
+#endif // __AP_MOUNT_H__

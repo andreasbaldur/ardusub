@@ -182,7 +182,6 @@ bool JSBSim::start_JSBSim(void)
     pid_t child_pid = fork();
     if (child_pid == 0) {
         // in child
-        setsid();
         dup2(devnull, 0);
         dup2(p[1], 1);
         close(p[0]);
@@ -234,7 +233,6 @@ bool JSBSim::start_JSBSim(void)
 
     started_jsbsim = true;
     check_stdout();
-    close(devnull);
     return true;
 }
 
@@ -422,7 +420,6 @@ void JSBSim::recv_fdm(const struct sitl_input &input)
     location.alt = fdm.agl*100 + home.alt;
     dcm.from_euler(fdm.phi, fdm.theta, fdm.psi);
     airspeed = fdm.vcas * FEET_TO_METERS;
-    airspeed_pitot = airspeed;
 
     rpm1 = fdm.rpm[0];
     rpm2 = fdm.rpm[1];

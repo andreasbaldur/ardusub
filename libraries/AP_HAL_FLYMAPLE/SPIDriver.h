@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_SPIDRIVER_H__
+#define __AP_HAL_FLYMAPLE_SPIDRIVER_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 #include "Semaphores.h"
@@ -45,3 +47,5 @@ public:
 private:
     FLYMAPLESPIDeviceDriver _device;
 };
+
+#endif // __AP_HAL_FLYMAPLE_SPIDRIVER_H__

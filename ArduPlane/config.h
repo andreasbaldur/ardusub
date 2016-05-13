@@ -19,7 +19,6 @@
 //
 // - Try to keep this file organised in the same order as APM_Config.h.example
 //
-#pragma once
 
 #include "defines.h"
 
@@ -412,4 +411,14 @@
 // Parachute release
 #ifndef PARACHUTE
 #define PARACHUTE ENABLED
+#endif
+
+/*
+  build a firmware version string.
+  GIT_VERSION comes from Makefile builds
+*/
+#ifndef GIT_VERSION
+#define FIRMWARE_STRING THISFIRMWARE
+#else
+#define FIRMWARE_STRING THISFIRMWARE " (" GIT_VERSION ")"
 #endif

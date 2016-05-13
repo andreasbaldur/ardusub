@@ -12,8 +12,7 @@ void Sub::default_dead_zones()
     channel_pitch->set_default_dead_zone(30);
     channel_throttle->set_default_dead_zone(30);
     channel_yaw->set_default_dead_zone(40);
-    channel_forward->set_default_dead_zone(30);
-    channel_lateral->set_default_dead_zone(30);
+    g.rc_6.set_default_dead_zone(0);
 }
 
 void Sub::init_rc_in()
@@ -23,27 +22,27 @@ void Sub::init_rc_in()
     channel_throttle = RC_Channel::rc_channel(rcmap.throttle()-1);
     channel_yaw      = RC_Channel::rc_channel(rcmap.yaw()-1);
     channel_forward  = RC_Channel::rc_channel(rcmap.forward()-1);
-    channel_lateral  = RC_Channel::rc_channel(rcmap.lateral()-1);
+    channel_strafe   = RC_Channel::rc_channel(rcmap.strafe()-1);
 
     // set rc channel ranges
     channel_roll->set_angle(ROLL_PITCH_INPUT_MAX);
     channel_pitch->set_angle(ROLL_PITCH_INPUT_MAX);
     channel_yaw->set_angle(4500);
-    channel_throttle->set_range(0, THR_MAX);
+    channel_throttle->set_range(g.throttle_min, THR_MAX);
     channel_forward->set_angle(4500);
-    channel_lateral->set_angle(4500);
+    channel_strafe->set_angle(4500);
 
     channel_roll->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
     channel_pitch->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
     channel_yaw->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
     channel_forward->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
-    channel_lateral->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+    channel_strafe->set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
 
     //set auxiliary servo ranges
-//    g.rc_5.set_range(0,1000);
-//    g.rc_6.set_range(0,1000);
-//    g.rc_7.set_range(0,1000);
-//    g.rc_8.set_range(0,1000);
+    g.rc_5.set_range(0,1000);
+    g.rc_6.set_range(0,1000);
+    g.rc_7.set_range(0,1000);
+    g.rc_8.set_range(0,1000);
 
     // set default dead zones
     default_dead_zones();
@@ -81,7 +80,7 @@ void Sub::init_rc_out()
 
     // setup correct scaling for ESCs like the UAVCAN PX4ESC which
     // take a proportion of speed. 
-    hal.rcout->set_esc_scaling(channel_throttle->get_radio_min(), channel_throttle->get_radio_max());
+    hal.rcout->set_esc_scaling(channel_throttle->radio_min, channel_throttle->radio_max);
 }
 
 // enable_motor_output() - enable and output lowest possible value to motors
@@ -98,11 +97,12 @@ void Sub::read_radio()
     uint32_t tnow_ms = millis();
 
     if (hal.rcin->new_input()) {
+        last_update_ms = tnow_ms;
         ap.new_radio_frame = true;
         RC_Channel::set_pwm_all();
 
-        set_throttle_and_failsafe(channel_throttle->get_radio_in());
-        set_throttle_zero_flag(channel_throttle->get_control_in());
+        set_throttle_and_failsafe(channel_throttle->radio_in);
+        set_throttle_zero_flag(channel_throttle->control_in);
 
         // flag we must have an rc receiver attached
         if (!failsafe.rc_override_active) {
@@ -111,13 +111,6 @@ void Sub::read_radio()
 
         // update output on any aux channels, for manual passthru
         RC_Channel_aux::output_ch_all();
-
-        // pass pilot input through to motors (used to allow wiggling servos while disarmed on heli, single, coax copters)
-        radio_passthrough_to_motors();
-
-        float dt = (tnow_ms - last_update_ms)*1.0e-3f;
-        rc_throttle_control_in_filter.apply(g.rc_3.get_control_in(), dt);
-        last_update_ms = tnow_ms;
     }else{
         uint32_t elapsed = tnow_ms - last_update_ms;
         // turn on throttle failsafe if no update from the RC Radio for 500ms or 2000ms if we are using RC_OVERRIDE
@@ -127,6 +120,84 @@ void Sub::read_radio()
             set_failsafe_radio(true);
         }
     }
+}
+
+void Sub::transform_manual_control_to_rc_override(int16_t x, int16_t y, int16_t z, int16_t r, uint16_t buttons) {
+	int16_t channels[10];
+
+	uint32_t tnow_ms = millis();
+
+	float rpyScale = 0.5;
+	float throttleScale = 0.8;
+	int16_t rpyCenter = 1500;
+	int16_t throttleBase = 1500-500*throttleScale;
+	static int16_t rollTrim = 0;
+	static int16_t mode;
+	static int16_t camTilt = 1500;
+	static int16_t lights = 1100;
+	static uint32_t lastLights;
+	static bool lightsBrighter = true;
+
+	// Button logic to arm/disarm motors (Start and back buttons)
+	if ( buttons & (1 << 4) ) {
+		init_arm_motors(true);
+	} else if ( buttons & (1 << 5) ) {
+		init_disarm_motors();
+	}
+
+	// Button logic to change camera tilt (D-pad up and down + left joystick click to center)
+	if ( buttons & (1 << 0) ) {
+		camTilt = constrain_float(camTilt+20,800,2200);
+	} else if ( buttons & (1 << 1) ) {
+		camTilt = constrain_float(camTilt-20,800,2200);
+	} else if ( buttons & (1 << 6) ) {
+		camTilt = 1500; // Reset camera tilt
+	}
+
+	// Button logic for roll trim (D-pad left and right)
+	if ( (buttons & ( 1 << 2 )) && rollTrim > -200 ) {
+		rollTrim -= 10;
+	} else if ( (buttons & ( 1 << 3 )) && rollTrim < 200 ) {
+		rollTrim += 10;
+	}
+
+	// Button logic for mode changes (B for stabilize, Y for altitude hold)
+	if ( buttons & (1 << 14) ) {
+		mode = 2000;
+	} else if ( buttons & (1 << 12)) {
+		mode = 1000;
+	}
+
+	// Button logic for lights with cyclical dimming (right joystick click)
+	if ( (buttons & (1 << 7)) && (tnow_ms - lastLights > 100) ) {
+		lastLights = tnow_ms;
+
+		if ( lightsBrighter ) {
+			lights += 200;
+		} else {
+			lights -= 200;
+		}
+
+		if ( lights >= 1900 ) {
+			lightsBrighter = false;
+		} else if ( lights <= 1100 ) {
+			lightsBrighter = true;
+		}
+	}
+
+	channels[0] = 1500;                           // pitch
+	channels[1] = 1500 + rollTrim;                // roll
+	channels[2] = z*throttleScale+throttleBase;   // throttle
+	channels[3] = r*rpyScale+rpyCenter;           // yaw
+	channels[4] = mode;                           // for testing only
+	channels[5] = x*rpyScale+rpyCenter;           // forward for ROV
+	channels[6] = y*rpyScale+rpyCenter;           // strafe for ROV
+	channels[7] = camTilt;                        // camera tilt
+	channels[8] = lights;
+	channels[9] = 0;
+
+	// record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
+	failsafe.rc_override_active = hal.rcin->set_overrides(channels, 10);
 }
 
 #define FS_COUNTER 3        // radio failsafe kicks in after 3 consecutive throttle values below failsafe_throttle_value
@@ -190,10 +261,4 @@ void Sub::set_throttle_zero_flag(int16_t throttle_control)
     } else if (tnow_ms - last_nonzero_throttle_ms > THROTTLE_ZERO_DEBOUNCE_TIME_MS) {
         ap.throttle_zero = true;
     }
-}
-
-// pass pilot's inputs to motors library (used to allow wiggling servos while disarmed on heli, single, coax copters)
-void Sub::radio_passthrough_to_motors()
-{
-    motors.set_radio_passthrough(channel_roll->get_control_in()/1000.0f, channel_pitch->get_control_in()/1000.0f, channel_throttle->get_control_in()/1000.0f, channel_yaw->get_control_in()/1000.0f);
 }

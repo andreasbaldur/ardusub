@@ -23,7 +23,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <stdlib.h>
 #include "AP_Math.h"
-#include "location.h"
 
 // scaling factor from 1e-7 degrees to meters at equater
 // == 1.0e-7 * DEG_TO_RAD * RADIUS_OF_EARTH
@@ -60,7 +59,7 @@ float get_distance(const struct Location &loc1, const struct Location &loc2)
 {
     float dlat              = (float)(loc2.lat - loc1.lat);
     float dlong             = ((float)(loc2.lng - loc1.lng)) * longitude_scale(loc2);
-    return norm(dlat, dlong) * LOCATION_SCALING_FACTOR;
+    return pythagorous2(dlat, dlong) * LOCATION_SCALING_FACTOR;
 }
 
 // return distance in centimeters to between two locations
@@ -150,40 +149,94 @@ Vector2f location_diff(const struct Location &loc1, const struct Location &loc2)
 }
 
 /*
+  wrap an angle in centi-degrees to 0..35999
+ */
+int32_t wrap_360_cd(int32_t error)
+{
+    if (error > 360000 || error < -360000) {
+        // for very large numbers use modulus
+        error = error % 36000;
+    }
+    while (error >= 36000) error -= 36000;
+    while (error < 0) error += 36000;
+    return error;
+}
+
+/*
+  wrap an angle in centi-degrees to -18000..18000
+ */
+int32_t wrap_180_cd(int32_t error)
+{
+    if (error > 360000 || error < -360000) {
+        // for very large numbers use modulus
+        error = error % 36000;
+    }
+    while (error > 18000) { error -= 36000; }
+    while (error < -18000) { error += 36000; }
+    return error;
+}
+
+/*
+  wrap an angle in centi-degrees to 0..35999
+ */
+float wrap_360_cd_float(float angle)
+{
+    if (angle >= 72000.0f || angle < -36000.0f) {
+        // for larger number use fmodulus
+        angle = fmod(angle, 36000.0f);
+    }
+    if (angle >= 36000.0f) angle -= 36000.0f;
+    if (angle < 0.0f) angle += 36000.0f;
+    return angle;
+}
+
+/*
+  wrap an angle in centi-degrees to -18000..18000
+ */
+float wrap_180_cd_float(float angle)
+{
+    if (angle > 54000.0f || angle < -54000.0f) {
+        // for large numbers use modulus
+        angle = fmod(angle,36000.0f);
+    }
+    if (angle > 18000.0f) { angle -= 36000.0f; }
+    if (angle < -18000.0f) { angle += 36000.0f; }
+    return angle;
+}
+
+/*
+  wrap an angle defined in radians to -PI ~ PI (equivalent to +- 180 degrees)
+ */
+float wrap_PI(float angle_in_radians)
+{
+    if (angle_in_radians > 10*PI || angle_in_radians < -10*PI) {
+        // for very large numbers use modulus
+        angle_in_radians = fmodf(angle_in_radians, 2*PI);
+    }
+    while (angle_in_radians > PI) angle_in_radians -= 2*PI;
+    while (angle_in_radians < -PI) angle_in_radians += 2*PI;
+    return angle_in_radians;
+}
+
+/*
+ * wrap an angle in radians to 0..2PI
+ */
+float wrap_2PI(float angle)
+{
+    if (angle > 10*PI || angle < -10*PI) {
+        // for very large numbers use modulus
+        angle = fmodf(angle, 2*PI);
+    }
+    while (angle > 2*PI) angle -= 2*PI;
+    while (angle < 0) angle += 2*PI;
+    return angle;
+}
+
+/*
   return true if lat and lng match. Ignores altitude and options
  */
 bool locations_are_same(const struct Location &loc1, const struct Location &loc2) {
     return (loc1.lat == loc2.lat) && (loc1.lng == loc2.lng);
-}
-
-/*
- * convert invalid waypoint with useful data. return true if location changed
- */
-bool location_sanitize(const struct Location &defaultLoc, struct Location &loc)
-{
-    bool has_changed = false;
-    // convert lat/lng=0 to mean current point
-    if (loc.lat == 0 && loc.lng == 0) {
-        loc.lat = defaultLoc.lat;
-        loc.lng = defaultLoc.lng;
-        has_changed = true;
-    }
-
-    // convert relative alt=0 to mean current alt
-    if (loc.alt == 0 && loc.flags.relative_alt) {
-        loc.flags.relative_alt = false;
-        loc.alt = defaultLoc.alt;
-        has_changed = true;
-    }
-
-    // limit lat/lng to appropriate ranges
-    if (abs(loc.lat) > 90 * 1e7 || abs(loc.lng) > 180 * 1e7) {
-        loc.lat = defaultLoc.lat;
-        loc.lng = defaultLoc.lng;
-        has_changed = true;
-    }
-
-    return has_changed;
 }
 
 /*

@@ -2,7 +2,9 @@
 
 /// @file	GCS_MAVLink.h
 /// @brief	One size fits all header for MAVLink integration.
-#pragma once
+
+#ifndef GCS_MAVLink_h
+#define GCS_MAVLink_h
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
@@ -18,8 +20,8 @@
 // into progmem
 #define MAVLINK_MESSAGE_CRC(msgid) mavlink_get_message_crc(msgid)
 
-// allow five telemetry ports
-#define MAVLINK_COMM_NUM_BUFFERS 5
+// allow four telemetry ports
+#define MAVLINK_COMM_NUM_BUFFERS 4
 
 /*
   The MAVLink protocol code generator does its own alignment, so
@@ -40,17 +42,6 @@ extern AP_HAL::UARTDriver	*mavlink_comm_port[MAVLINK_COMM_NUM_BUFFERS];
 /// MAVLink system definition
 extern mavlink_system_t mavlink_system;
 
-/// Sanity check MAVLink channel
-///
-/// @param chan		Channel to send to
-static inline bool valid_channel(mavlink_channel_t chan)
-{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
-    return chan < MAVLINK_COMM_NUM_BUFFERS;
-#pragma clang diagnostic pop
-}
-
 /// Send a byte to the nominated MAVLink channel
 ///
 /// @param chan		Channel to send to
@@ -58,7 +49,8 @@ static inline bool valid_channel(mavlink_channel_t chan)
 ///
 static inline void comm_send_ch(mavlink_channel_t chan, uint8_t ch)
 {
-    if (!valid_channel(chan)) {
+    // sanity check chan
+    if (chan >= MAVLINK_COMM_NUM_BUFFERS) {
         return;
     }
     mavlink_comm_port[chan]->write(ch);
@@ -102,3 +94,5 @@ uint8_t mav_var_type(enum ap_var_type t);
 uint8_t mavlink_get_message_crc(uint8_t msgid);
 
 #pragma GCC diagnostic pop
+
+#endif // GCS_MAVLink_h

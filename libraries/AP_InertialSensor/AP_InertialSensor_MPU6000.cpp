@@ -771,7 +771,7 @@ int AP_MPU6000_AuxiliaryBusSlave::passthrough_write(uint8_t reg, uint8_t val)
     /* disable new writes */
     backend._register_write(_mpu6000_ctrl, 0);
 
-    return 1;
+    return 0;
 }
 
 int AP_MPU6000_AuxiliaryBusSlave::read(uint8_t *buf)
@@ -782,11 +782,9 @@ int AP_MPU6000_AuxiliaryBusSlave::read(uint8_t *buf)
     }
 
     auto &backend = AP_InertialSensor_MPU6000::from(_bus.get_backend());
-    if (!backend._block_read(MPUREG_EXT_SENS_DATA_00 + _ext_sens_data, buf, _sample_size)) {
-        return -1;
-    }
+    backend._block_read(MPUREG_EXT_SENS_DATA_00 + _ext_sens_data, buf, _sample_size);
 
-    return _sample_size;
+    return 0;
 }
 
 /* MPU6000 provides up to 5 slave devices, but the 5th is way too different to

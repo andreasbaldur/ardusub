@@ -147,7 +147,9 @@
 //         - ppm_encoder_init() will now make sure PPM output always starts with fail-safe (900us) value on throttle after a brown-out reset
 
 // -------------------------------------------------------------
-#pragma once
+
+#ifndef _PPM_ENCODER_H_
+#define _PPM_ENCODER_H_
 
 #include <avr/io.h>
 
@@ -1053,3 +1055,6 @@ void ppm_encoder_init( void )
     }
 }
 // ------------------------------------------------------------------------------
+
+#endif // _PPM_ENCODER_H_
+

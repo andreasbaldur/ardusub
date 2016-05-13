@@ -116,7 +116,7 @@ void NavEKF2_core::InitialiseVariables()
     localFilterTimeStep_ms = MAX(localFilterTimeStep_ms,10);
 
     // initialise time stamps
-    imuSampleTime_ms = frontend->imuSampleTime_us / 1000;
+    imuSampleTime_ms = AP_HAL::millis();
     lastHealthyMagTime_ms = imuSampleTime_ms;
     prevTasStep_ms = imuSampleTime_ms;
     prevBetaStep_ms = imuSampleTime_ms;
@@ -126,7 +126,6 @@ void NavEKF2_core::InitialiseVariables()
     lastPosPassTime_ms = imuSampleTime_ms;
     lastHgtPassTime_ms = imuSampleTime_ms;
     lastTasPassTime_ms = imuSampleTime_ms;
-    lastSynthYawTime_ms = imuSampleTime_ms;
     lastTimeGpsReceived_ms = 0;
     secondLastGpsTime_ms = 0;
     lastDecayTime_ms = imuSampleTime_ms;
@@ -250,7 +249,6 @@ void NavEKF2_core::InitialiseVariables()
     imuDataDownSampledNew.delVelDT = 0.0f;
     runUpdates = false;
     framesSincePredict = 0;
-    lastMagOffsetsValid = false;
 
     // zero data buffers
     storedIMU.reset();
@@ -300,7 +298,7 @@ bool NavEKF2_core::InitialiseFilterBootstrap(void)
         pitch = asinf(initAccVec.x);
 
         // calculate initial roll angle
-        roll = atan2f(-initAccVec.y , -initAccVec.z);
+        roll = -asinf(initAccVec.y / cosf(pitch));
     }
 
     // calculate initial roll and pitch orientation
@@ -423,7 +421,7 @@ void NavEKF2_core::UpdateFilter(bool predict)
     // TODO - in-flight restart method
 
     //get starting time for update step
-    imuSampleTime_ms = frontend->imuSampleTime_us / 1000;
+    imuSampleTime_ms = AP_HAL::millis();
 
     // Check arm status and perform required checks and mode changes
     controlFilterModes();
@@ -506,7 +504,7 @@ void NavEKF2_core::UpdateStrapdownEquationsNED()
     // calculate a magnitude of the filtered nav acceleration (required for GPS
     // variance estimation)
     accNavMag = velDotNEDfilt.length();
-    accNavMagHoriz = norm(velDotNEDfilt.x , velDotNEDfilt.y);
+    accNavMagHoriz = pythagorous2(velDotNEDfilt.x , velDotNEDfilt.y);
 
     // save velocity for use in trapezoidal intergration for position calcuation
     Vector3f lastVelocity = stateStruct.velocity;

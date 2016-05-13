@@ -1,5 +1,4 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: t -*-
-#pragma once
 
 /// @file    AP_SpdHgtControl.h
 /// @brief   generic speed & height controller interface
@@ -11,6 +10,9 @@
   own class.
  */
 
+#ifndef AP_SPDHGTCONTROL_H
+#define AP_SPDHGTCONTROL_H
+
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <DataFlash/DataFlash.h>
@@ -20,7 +22,7 @@ public:
 	// Update the internal state of the height and height rate estimator
 	// Update of the inertial speed rate estimate internal state
 	// Should be called at 50Hz or faster
-	virtual void update_50hz(void) = 0;
+	virtual void update_50hz(float height_above_field) = 0;
 
 	/**
 	   stages of flight so the altitude controller can choose to
@@ -68,11 +70,8 @@ public:
 	// return maximum climb rate
 	virtual float get_max_climbrate(void) const = 0;
 
-    // return landing sink rate
-    virtual float get_land_sinkrate(void) const = 0;
-
-    // return landing airspeed
-    virtual float get_land_airspeed(void) const = 0;
+	// return landing sink rate
+	virtual float get_land_sinkrate(void) const = 0;
 
 	// set path_proportion accessor
     virtual void set_path_proportion(float path_proportion) = 0;
@@ -86,3 +85,6 @@ public:
 	
 
 };
+
+
+#endif // AP_SPDHGTCONTROL_H

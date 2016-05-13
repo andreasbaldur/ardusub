@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_SITL_ANALOG_IN_H__
+#define __AP_HAL_SITL_ANALOG_IN_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_SITL_Namespace.h"
@@ -44,3 +46,5 @@ private:
     static ADCSource* _channels[SITL_INPUT_MAX_CHANNELS];
     SITL_State *_sitlState;
 };
+
+#endif // __AP_HAL_SITL_ANALOG_IN_H__

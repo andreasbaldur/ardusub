@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_RCOUTPUT_H__
+#define __AP_HAL_FLYMAPLE_RCOUTPUT_H__
 
 #include "AP_HAL_FLYMAPLE.h"
 
@@ -43,3 +45,5 @@ private:
 
     uint32_t _clocks_per_msecond[FLYMAPLE_RC_OUTPUT_NUM_CHANNELS];
 };
+
+#endif // __AP_HAL_FLYMAPLE_RCOUTPUT_H__

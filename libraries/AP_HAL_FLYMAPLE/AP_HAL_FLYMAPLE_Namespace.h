@@ -15,7 +15,9 @@
 /*
   Flymaple port by Mike McCauley
  */
-#pragma once
+
+#ifndef __AP_HAL_FLYMAPLE_NAMESPACE_H__
+#define __AP_HAL_FLYMAPLE_NAMESPACE_H__
 
 /* While not strictly required, names inside the FLYMAPLE namespace are prefixed
  * AP_HAL_FLYMAPLE_NS for clarity. (Some of our users aren't familiar with all of the
@@ -38,3 +40,6 @@ namespace AP_HAL_FLYMAPLE_NS {
     class FLYMAPLEScheduler;
     class FLYMAPLEUtil;
 }
+
+#endif // __AP_HAL_FLYMAPLE_NAMESPACE_H__
+

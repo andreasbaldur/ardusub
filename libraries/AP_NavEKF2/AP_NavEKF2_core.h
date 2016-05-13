@@ -17,7 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef AP_NavEKF2_core
+#define AP_NavEKF2_core
 
 #pragma GCC optimize("O3")
 
@@ -130,7 +132,7 @@ public:
 
     // Return estimated magnetometer offsets
     // Return true if magnetometer offsets are valid
-    bool getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const;
+    bool getMagOffsets(Vector3f &magOffsets) const;
 
     // Return the last calculated latitude, longitude and height in WGS-84
     // If a calculated location isn't available, return a raw GPS measurement
@@ -593,10 +595,13 @@ private:
     void alignMagStateDeclination();
 
     // Fuse compass measurements using a simple declination observation (doesn't require magnetic field states)
-    void fuseEulerYaw();
+    void fuseCompass();
 
     // Fuse declination angle to keep earth field declination from changing when we don't have earth relative observations.
     void FuseDeclination();
+
+    // Calculate compass heading innovation
+    float calcMagHeadingInnov();
 
     // Propagate PVA solution forward from the fusion time horizon to the current time horizon
     // using a simple observer
@@ -685,7 +690,6 @@ private:
     uint32_t secondLastGpsTime_ms;  // time of second last GPS fix used to determine how long since last update
     uint32_t lastHealthyMagTime_ms; // time the magnetometer was last declared healthy
     bool allMagSensorsFailed;       // true if all magnetometer sensors have timed out on this flight and we are no longer using magnetometer data
-    uint32_t lastSynthYawTime_ms;   // time stamp when synthetic yaw measurement was last fused to maintain covariance health (msec)
     uint32_t ekfStartTime_ms;       // time the EKF was started (msec)
     Matrix24 nextP;                 // Predicted covariance matrix before addition of process noise to diagonals
     Vector24 processNoise;          // process noise added to diagonals of predicted covariance matrix
@@ -759,8 +763,6 @@ private:
     bool sideSlipFusionDelayed;     // true when the sideslip fusion has been delayed
     bool magFuseTiltInhibit;        // true when the 3-axis magnetoemter fusion is prevented from changing tilt angle
     uint32_t magFuseTiltInhibit_ms; // time in msec that the condition indicated by magFuseTiltInhibit was commenced
-    Vector3f lastMagOffsets;        // Last magnetometer offsets from COMPASS_ parameters. Used to detect parameter changes.
-    bool lastMagOffsetsValid;       // True when lastMagOffsets has been initialized
     Vector2f posResetNE;            // Change in North/East position due to last in-flight reset in metres. Returned by getLastPosNorthEastReset
     uint32_t lastPosReset_ms;       // System time at which the last position reset occurred. Returned by getLastPosNorthEastReset
     Vector2f velResetNE;            // Change in North/East velocity due to last in-flight reset in metres/sec. Returned by getLastVelNorthEastReset
@@ -935,3 +937,5 @@ private:
     // vehicle specific initial gyro bias uncertainty
     float InitialGyroBiasUncertainty(void) const;
 };
+
+#endif // AP_NavEKF2_core

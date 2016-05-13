@@ -600,12 +600,12 @@ void NavEKF::getMagXYZ(Vector3f &magXYZ) const
 
 // Return estimated magnetometer offsets
 // Return true if magnetometer offsets are valid
-bool NavEKF::getMagOffsets(uint8_t mag_idx, Vector3f &magOffsets) const
+bool NavEKF::getMagOffsets(Vector3f &magOffsets) const
 {
     if (!core) {
         return false;
     }
-    return core->getMagOffsets(mag_idx, magOffsets);
+    return core->getMagOffsets(magOffsets);
 }
 
 // Return the last calculated latitude, longitude and height in WGS-84

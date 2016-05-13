@@ -17,7 +17,6 @@
  */
 
 #include <AP_HAL/AP_HAL.h>
-#include <AP_Notify/AP_Notify.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 
@@ -71,7 +70,6 @@ void AP_BattMonitor_SMBus_PX4::read()
             _state.current_total_mah = batt_status.discharged_mah;
             _state.healthy = true;
             _state.is_powering_off = batt_status.is_powering_off;
-            AP_Notify::flags.powering_off = batt_status.is_powering_off;
 
             // read capacity
             if ((_batt_fd >= 0) && !_capacity_updated) {

@@ -1,5 +1,7 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#pragma once
+
+#ifndef __AP_STEER_CONTROLLER_H__
+#define __AP_STEER_CONTROLLER_H__
 
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Common/AP_Common.h>
@@ -60,3 +62,5 @@ private:
 
 	AP_AHRS &_ahrs;
 };
+
+#endif // __AP_STEER_CONTROLLER_H__

@@ -6,7 +6,9 @@
    This uses posix file IO to create log files called logNN.dat in the
    given directory
  */
-#pragma once
+
+#ifndef DataFlash_File_h
+#define DataFlash_File_h
 
 #if HAL_OS_POSIX_IO
 
@@ -151,3 +153,5 @@ private:
 };
 
 #endif // HAL_OS_POSIX_IO
+
+#endif // DataFlash_File_h

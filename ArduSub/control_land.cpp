@@ -56,8 +56,7 @@ void Sub::land_gps_run()
     float target_yaw_rate = 0;
 
     // if not auto armed or landed or motor interlock not enabled set throttle to zero and exit immediately
-    if (!motors.armed() || !ap.auto_armed || ap.land_complete || !motors.get_interlock()) {
-        motors.set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+    if(!ap.auto_armed || ap.land_complete || !motors.get_interlock()) {
     	// multicopters do not stabilize roll/pitch/yaw when disarmed
         attitude_control.set_throttle_out_unstabilized(0,true,g.throttle_filt);
 
@@ -84,21 +83,13 @@ void Sub::land_gps_run()
 
     // process pilot inputs
     if (!failsafe.radio) {
-        if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
-            Log_Write_Event(DATA_LAND_CANCELLED_BY_PILOT);
-            // exit land if throttle is high
-            if (!set_mode(LOITER, MODE_REASON_THROTTLE_LAND_ESCAPE)) {
-                set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
-            }
-        }
-        
         if (g.land_repositioning) {
             // apply SIMPLE mode transform to pilot inputs
             update_simple_mode();
 
             // process pilot's roll and pitch input
-            roll_control = channel_roll->get_control_in();
-            pitch_control = channel_pitch->get_control_in();
+            roll_control = channel_roll->control_in;
+            pitch_control = channel_pitch->control_in;
 
             // record if pilot has overriden roll or pitch
             if (roll_control != 0 || pitch_control != 0) {
@@ -107,11 +98,8 @@ void Sub::land_gps_run()
         }
 
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->control_in);
     }
-
-    // set motors to full range
-    motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
     // process roll, pitch inputs
     wp_nav.set_pilot_desired_acceleration(roll_control, pitch_control);
@@ -161,16 +149,15 @@ void Sub::land_nogps_run()
             update_simple_mode();
 
             // get pilot desired lean angles
-            get_pilot_desired_lean_angles(channel_roll->get_control_in(), channel_pitch->get_control_in(), target_roll, target_pitch, aparm.angle_max);
+            get_pilot_desired_lean_angles(channel_roll->control_in, channel_pitch->control_in, target_roll, target_pitch, aparm.angle_max);
         }
 
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->control_in);
     }
 
     // if not auto armed or landed or motor interlock not enabled set throttle to zero and exit immediately
-    if (!motors.armed() || !ap.auto_armed || ap.land_complete || !motors.get_interlock()) {
-        motors.set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+    if(!ap.auto_armed || ap.at_surface || !motors.get_interlock()) {
     	// multicopters do not stabilize roll/pitch/yaw when disarmed
         attitude_control.set_throttle_out_unstabilized(0,true,g.throttle_filt);
 
@@ -182,14 +169,11 @@ void Sub::land_nogps_run()
 #else
         // disarm when the landing detector says we've landed
         if (ap.at_surface) {
-        	set_mode(ALT_HOLD, MODE_REASON_THROTTLE_LAND_ESCAPE);
+        	set_mode(ALT_HOLD);
         }
 #endif
         return;
     }
-
-    // set motors to full range
-    motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
     // call attitude controller
     attitude_control.input_euler_angle_roll_pitch_euler_rate_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
@@ -221,25 +205,8 @@ float Sub::get_land_descent_speed()
 #else
     bool sonar_ok = false;
 #endif
-
-    // get position controller's target altitude above terrain
-	Location_Class target_loc = pos_control.get_pos_target();
-	int32_t target_alt_cm;
-
-	// get altitude target above home by default
-	target_loc.get_alt_cm(Location_Class::ALT_FRAME_ABOVE_HOME, target_alt_cm);
-
-	// try to use terrain if enabled
-	if (terrain_use() && !target_loc.get_alt_cm(Location_Class::ALT_FRAME_ABOVE_TERRAIN, target_alt_cm)) {
-		Log_Write_Error(ERROR_SUBSYSTEM_TERRAIN, ERROR_CODE_MISSING_TERRAIN_DATA);
-	}
-
     // if we are above 10m and the sonar does not sense anything perform regular alt hold descent
-    if (target_alt_cm <= LAND_START_ALT && !(sonar_ok && sonar_alt_health >= SONAR_ALT_HEALTH_MAX)) {
-        if (g.land_speed_high > 0) {
-            // user has asked for a different landing speed than normal descent rate
-            return -abs(g.land_speed_high);
-        }
+    if (pos_control.get_pos_target().z <= pv_alt_above_origin(LAND_START_ALT) && !(sonar_ok && sonar_alt_health >= SONAR_ALT_HEALTH_MAX)) {
         return pos_control.get_speed_up();
     }else{
         return abs(g.land_speed);
@@ -256,9 +223,9 @@ void Sub::land_do_not_use_GPS()
 
 // set_mode_land_with_pause - sets mode to LAND and triggers 4 second delay before descent starts
 //  this is always called from a failsafe so we trigger notification to pilot
-void Sub::set_mode_land_with_pause(mode_reason_t reason)
+void Sub::set_mode_land_with_pause()
 {
-    set_mode(LAND, reason);
+    set_mode(LAND);
     land_pause = true;
 
     // alert pilot to mode change

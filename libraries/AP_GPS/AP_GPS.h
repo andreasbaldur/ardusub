@@ -13,7 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef __AP_GPS_H__
+#define __AP_GPS_H__
 
 #include <AP_HAL/AP_HAL.h>
 #include <inttypes.h>
@@ -68,7 +70,6 @@ public:
         GPS_TYPE_SBF   = 10,
 		GPS_TYPE_GSOF  = 11,
 		GPS_TYPE_QURT  = 12,
-        GPS_TYPE_ERB = 13,
     };
 
     /// GPS status codes
@@ -112,7 +113,7 @@ public:
         uint16_t time_week;                 ///< GPS week number
         Location location;                  ///< last fix location
         float ground_speed;                 ///< ground speed in m/sec
-        float ground_course;                ///< ground course in degrees
+        int32_t ground_course_cd;           ///< ground course in 100ths of a degree
         uint16_t hdop;                      ///< horizontal dilution of precision in cm
         uint16_t vdop;                      ///< vertical dilution of precision in cm
         uint8_t num_sats;                   ///< Number of visible satelites        
@@ -217,14 +218,8 @@ public:
     }
 
     // ground course in centidegrees
-    float ground_course(uint8_t instance) const {
-        return state[instance].ground_course;
-    }
-    float ground_course() const {
-        return ground_course(primary_instance);
-    }
     int32_t ground_course_cd(uint8_t instance) const {
-        return ground_course(instance) * 100;
+        return state[instance].ground_course_cd;
     }
     int32_t ground_course_cd() const {
         return ground_course_cd(primary_instance);
@@ -288,9 +283,6 @@ public:
         return last_message_time_ms(primary_instance);
     }
 
-    // convert GPS week and millis to unix epoch in ms
-    static uint64_t time_epoch_convert(uint16_t gps_week, uint32_t gps_ms);
-    
     // return last fix time since the 1/1/1970 in microseconds
     uint64_t time_epoch_usec(uint8_t instance);
     uint64_t time_epoch_usec(void) { 
@@ -311,11 +303,8 @@ public:
     // set position for HIL
     void setHIL(uint8_t instance, GPS_Status status, uint64_t time_epoch_ms, 
                 const Location &location, const Vector3f &velocity, uint8_t num_sats,
-                uint16_t hdop);
+                uint16_t hdop, bool _have_vertical_velocity);
 
-    // set accuracy for HIL
-    void setHIL_Accuracy(uint8_t instance, float vdop, float hacc, float vacc, float sacc, bool _have_vertical_velocity, uint32_t sample_ms);
-    
     static const struct AP_Param::GroupInfo var_info[];
 
     // dataflash for logging, if available
@@ -356,7 +345,6 @@ public:
 
     // Returns the index of the first unconfigured GPS (returns GPS_ALL_CONFIGURED if all instances report as being configured)
     uint8_t first_unconfigured_gps(void) const;
-    void broadcast_first_configuration_failure_reason(void) const;
 
 private:
     struct GPS_timing {
@@ -391,7 +379,6 @@ private:
         struct SIRF_detect_state sirf_detect_state;
         struct NMEA_detect_state nmea_detect_state;
         struct SBP_detect_state sbp_detect_state;
-        struct ERB_detect_state erb_detect_state;
     } detect_state[GPS_MAX_INSTANCES];
 
     struct {
@@ -405,7 +392,20 @@ private:
 
     void detect_instance(uint8_t instance);
     void update_instance(uint8_t instance);
-    void _broadcast_gps_type(const char *type, uint8_t instance, int8_t baud_index);
 };
 
 #define GPS_BAUD_TIME_MS 1200
+
+#include "GPS_Backend.h"
+#include "AP_GPS_UBLOX.h"
+#include "AP_GPS_MTK.h"
+#include "AP_GPS_MTK19.h"
+#include "AP_GPS_NMEA.h"
+#include "AP_GPS_SIRF.h"
+#include "AP_GPS_SBP.h"
+#include "AP_GPS_PX4.h"
+#include "AP_GPS_QURT.h"
+#include "AP_GPS_SBF.h"
+#include "AP_GPS_GSOF.h"
+
+#endif // __AP_GPS_H__

@@ -13,7 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+
+#ifndef __AP_RANGEFINDER_BACKEND_H__
+#define __AP_RANGEFINDER_BACKEND_H__
 
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
@@ -37,8 +39,6 @@ public:
         return ranger._powersave_range > 0 && ranger.estimated_terrain_height > ranger._powersave_range;
     }
 
-    virtual void handle_msg(mavlink_message_t *msg) { return; };
-
 protected:
 
     // update status based on distance measurement
@@ -50,3 +50,4 @@ protected:
     RangeFinder &ranger;
     RangeFinder::RangeFinder_State &state;
 };
+#endif // __AP_RANGEFINDER_BACKEND_H__

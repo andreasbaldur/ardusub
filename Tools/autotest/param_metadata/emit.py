@@ -16,6 +16,4 @@ class Emit:
     def emit(self, g, f):
 	pass
 
-    def set_annotate_with_vehicle(self, value):
-        self.annotate_with_vehicle = value
 

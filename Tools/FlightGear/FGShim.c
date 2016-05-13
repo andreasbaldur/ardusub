@@ -49,7 +49,7 @@
 
 #include <err.h>
 #include <fcntl.h>
-#include <cmath>
+#include <math.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>

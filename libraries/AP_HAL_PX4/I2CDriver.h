@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef __AP_HAL_PX4_I2CDRIVER_H__
+#define __AP_HAL_PX4_I2CDRIVER_H__
 
 #include "AP_HAL_PX4.h"
 #include <AP_HAL_Empty/AP_HAL_Empty.h>
@@ -45,3 +47,5 @@ private:
     Empty::Semaphore semaphore;
     PX4_I2C *px4_i2c = nullptr;
 };
+
+#endif // __AP_HAL_PX4_I2CDRIVER_H__

@@ -9,14 +9,14 @@
 // acro_init - initialise acro controller
 bool Sub::acro_init(bool ignore_checks)
 {
-    // if landed and the mode we're switching from does not have manual throttle and the throttle stick is too high
-    if (motors.armed() && ap.land_complete && !mode_has_manual_throttle(control_mode) && (get_pilot_desired_throttle(channel_throttle->get_control_in()) > get_non_takeoff_throttle())) {
-        return false;
-    }
-    // set target altitude to zero for reporting
-    pos_control.set_alt_target(0);
+   // if landed and the mode we're switching from does not have manual throttle and the throttle stick is too high
+   if (motors.armed() && ap.land_complete && !mode_has_manual_throttle(control_mode) && (g.rc_3.control_in > get_non_takeoff_throttle())) {
+       return false;
+   }
+   // set target altitude to zero for reporting
+   pos_control.set_alt_target(0);
 
-    return true;
+   return true;
 }
 
 // acro_run - runs the acro controller
@@ -24,22 +24,23 @@ bool Sub::acro_init(bool ignore_checks)
 void Sub::acro_run()
 {
     float target_roll, target_pitch, target_yaw;
-    float pilot_throttle_scaled;
+    int16_t pilot_throttle_scaled;
 
-    // if not armed set throttle to zero and exit immediately
-    if (!motors.armed() || !motors.get_interlock()) {
-        motors.set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+    // if motors not running reset angle targets
+    if(!motors.armed()) {
         attitude_control.set_throttle_out_unstabilized(0,true,g.throttle_filt);
+        // slow start if landed
+        if (ap.land_complete) {
+            motors.slow_start(true);
+        }
         return;
     }
 
-    motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
-
     // convert the input to the desired body frame rate
-    get_pilot_desired_angle_rates(channel_roll->get_control_in(), channel_pitch->get_control_in(), channel_yaw->get_control_in(), target_roll, target_pitch, target_yaw);
+    get_pilot_desired_angle_rates(channel_roll->control_in, channel_pitch->control_in, channel_yaw->control_in, target_roll, target_pitch, target_yaw);
 
     // get pilot's desired throttle
-    pilot_throttle_scaled = get_pilot_desired_throttle(channel_throttle->get_control_in());
+    pilot_throttle_scaled = get_pilot_desired_throttle(channel_throttle->control_in);
 
     // run attitude controller
     attitude_control.input_rate_bf_roll_pitch_yaw(target_roll, target_pitch, target_yaw);
@@ -49,8 +50,8 @@ void Sub::acro_run()
 
     //control_in is range 0-1000
     //radio_in is raw pwm value
-    motors.set_forward(channel_forward->norm_input());
-    motors.set_lateral(channel_lateral->norm_input());
+    motors.set_forward(channel_forward->radio_in);
+    motors.set_strafe(channel_strafe->radio_in);
 }
 
 
@@ -62,7 +63,7 @@ void Sub::get_pilot_desired_angle_rates(int16_t roll_in, int16_t pitch_in, int16
     Vector3f rate_ef_level, rate_bf_level, rate_bf_request;
 
     // apply circular limit to pitch and roll inputs
-    float total_in = norm(pitch_in, roll_in);
+    float total_in = pythagorous2((float)pitch_in, (float)roll_in);
 
     if (total_in > ROLL_PITCH_INPUT_MAX) {
         float ratio = (float)ROLL_PITCH_INPUT_MAX / total_in;

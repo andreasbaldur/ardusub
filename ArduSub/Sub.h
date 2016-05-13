@@ -1,5 +1,11 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
+#ifndef _SUB_H
+#define _SUB_H
+
+#define THISFIRMWARE "ArduSub V3.4-dev"
+#define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_DEV
+
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +20,6 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 /*
   This is the main Sub class
  */
@@ -23,7 +28,7 @@
 // Header includes
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmath>
+#include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -31,7 +36,6 @@
 
 // Common dependencies
 #include <AP_Common/AP_Common.h>
-#include <AP_Common/Location.h>
 #include <AP_Menu/AP_Menu.h>
 #include <AP_Param/AP_Param.h>
 #include <StorageManager/StorageManager.h>
@@ -86,7 +90,6 @@
 #include <AP_Terrain/AP_Terrain.h>
 #include <AP_RPM/AP_RPM.h>
 #include <AC_InputManager/AC_InputManager.h>        // Pilot input handling library
-#include <AP_JSButton/AP_JSButton.h>   // Joystick/gamepad button function assignment
 
 // Configuration
 #include "defines.h"
@@ -155,10 +158,10 @@ private:
     RC_Channel *channel_throttle;
     RC_Channel *channel_yaw;
     RC_Channel *channel_forward;
-    RC_Channel *channel_lateral;
+    RC_Channel *channel_strafe;
 
     // Dataflash
-    DataFlash_Class DataFlash;
+    DataFlash_Class DataFlash{FIRMWARE_STRING};
 
     AP_GPS gps;
 
@@ -246,11 +249,7 @@ private:
 
     // This is the state of the flight control system
     // There are multiple states defined such as STABILIZE, ACRO,
-    control_mode_t control_mode;
-    mode_reason_t control_mode_reason = MODE_REASON_UNKNOWN;
-
-    control_mode_t prev_control_mode;
-    mode_reason_t prev_control_mode_reason = MODE_REASON_UNKNOWN;
+    int8_t control_mode;
 
     // Structure used to detect changes in the flight mode control switch
     struct {
@@ -281,13 +280,10 @@ private:
         uint8_t battery             : 1; // 2   // A status flag for the battery failsafe
         uint8_t gcs                 : 1; // 4   // A status flag for the ground station failsafe
         uint8_t ekf                 : 1; // 5   // true if ekf failsafe has occurred
-        uint8_t terrain             : 1; // 6   // true if the missing terrain data failsafe has occurred
 
         int8_t radio_counter;            // number of iterations with throttle below throttle_fs_value
 
         uint32_t last_heartbeat_ms;      // the time when the last HEARTBEAT message arrived from a GCS - used for triggering gcs failsafe
-        uint32_t terrain_first_failure_ms;  // the first time terrain data access failed - used to calculate the duration of the failure
-        uint32_t terrain_last_failure_ms;   // the most recent time terrain data access failed
     } failsafe;
 
     // sensor health for logging
@@ -321,8 +317,6 @@ private:
  #define MOTOR_CLASS AP_MotorsVectoredROV
 #elif FRAME_CONFIG == VECTORED6DOF_FRAME
  #define MOTOR_CLASS AP_MotorsVectored6DOF
-#elif FRAME_CONFIG == SIMPLEROV_FRAME
- #define MOTOR_CLASS AP_MotorsSimpleROV
 
 #else
  #error Unrecognised frame type
@@ -353,16 +347,7 @@ private:
     // RTL
     RTLState rtl_state;  // records state of rtl (initial climb, returning home, etc)
     bool rtl_state_complete; // set to true if the current state is completed
-
-    struct {
-		// NEU w/ Z element alt-above-ekf-origin unless use_terrain is true in which case Z element is alt-above-terrain
-		Location_Class origin_point;
-		Location_Class climb_target;
-		Location_Class return_target;
-		Location_Class descent_target;
-		bool land;
-		bool terrain_used;
-	} rtl_path;
+    float rtl_alt;     // altitude the vehicle is returning at
 
     // Circle
     bool circle_pilot_yaw_override; // true if pilot is overriding yaw
@@ -390,12 +375,6 @@ private:
     // Flip
     Vector3f flip_orig_attitude;         // original Sub attitude before flip
 
-    // Throw
-    bool throw_early_exit_interlock = true; // value of the throttle interlock that must be restored when exiting throw mode early
-    bool throw_flight_commenced = false;    // true when the throw has been detected and the motors and control loops are running
-    uint32_t throw_free_fall_start_ms = 0;  // system time free fall was detected
-    float throw_free_fall_start_velz = 0.0f;// vertical velocity when free fall was detected
-
     // Battery Sensors
     AP_BattMonitor battery;
 
@@ -415,12 +394,9 @@ private:
     float baro_climbrate;        // barometer climbrate in cm/s
     LowPassFilterVector3f land_accel_ef_filter; // accelerations for land and crash detector tests
 
-    // filtered pilot's throttle input used to cancel landing if throttle held high
-    LowPassFilterFloat rc_throttle_control_in_filter;
-
     // 3D Location vectors
     // Current location of the Sub (altitude is relative to home)
-    Location_Class current_loc;
+    struct Location current_loc;
 
     // Navigation Yaw control
     // auto flight mode's yaw mode
@@ -569,7 +545,8 @@ private:
     void update_trigger();
     void update_batt_compass(void);
     void ten_hz_logging_loop();
-    void twentyfive_hz_logging();
+    void fifty_hz_logging_loop();
+    void full_rate_logging_loop();
     void three_hz_loop();
     void one_hz_loop();
     void update_GPS(void);
@@ -599,13 +576,13 @@ private:
     float get_look_ahead_yaw();
     void update_thr_average();
     void set_throttle_takeoff();
-    float get_pilot_desired_throttle(int16_t throttle_control);
+    int16_t get_pilot_desired_throttle(int16_t throttle_control);
     float get_pilot_desired_climb_rate(float throttle_control);
     float get_non_takeoff_throttle();
     float get_takeoff_trigger_throttle();
     float get_throttle_pre_takeoff(float input_thr);
     float get_surface_tracking_climb_rate(int16_t target_rate, float current_alt_target, float dt);
-    void set_accel_throttle_I_from_pilot_throttle(float pilot_throttle);
+    void set_accel_throttle_I_from_pilot_throttle(int16_t pilot_throttle);
     void update_poscon_alt_max();
     void rotate_body_frame_to_NE(float &x, float &y);
     void gcs_send_heartbeat(void);
@@ -626,6 +603,7 @@ private:
     void send_rpm(mavlink_channel_t chan);
     void rpm_update();
     void send_pid_tuning(mavlink_channel_t chan);
+    void send_statustext(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
     void gcs_send_message(enum ap_message id);
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
@@ -641,6 +619,7 @@ private:
     void Log_Write_Control_Tuning();
     void Log_Write_Performance();
     void Log_Write_Attitude();
+    void Log_Write_Rate();
     void Log_Write_MotBatt();
     void Log_Write_Startup();
     void Log_Write_Event(uint8_t id);
@@ -655,12 +634,10 @@ private:
     void Log_Write_Home_And_Origin();
     void Log_Sensor_Health();
     void Log_Write_Precland();
-    void Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_target, const Vector3f& vel_target);
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page);
     void start_logging() ;
     void load_parameters(void);
-    void convert_pid_parameters(void);
     void userhook_init();
     void userhook_FastLoop();
     void userhook_50Hz();
@@ -683,6 +660,7 @@ private:
     bool verify_loiter_time();
     bool verify_RTL();
     bool verify_wait_delay();
+    bool verify_change_alt();
     bool verify_within_distance();
     bool verify_yaw();
     void do_take_picture();
@@ -696,10 +674,9 @@ private:
     void althold_run();
     bool auto_init(bool ignore_checks);
     void auto_run();
-    void auto_takeoff_start(const Location& dest_loc);
+    void auto_takeoff_start(float final_alt_above_home);
     void auto_takeoff_run();
     void auto_wp_start(const Vector3f& destination);
-    void auto_wp_start(const Location_Class& dest_loc);
     void auto_wp_run();
     void auto_spline_run();
     void auto_land_start();
@@ -707,7 +684,7 @@ private:
     void auto_land_run();
     void auto_rtl_start();
     void auto_rtl_run();
-    void auto_circle_movetoedge_start(const Location_Class &circle_center, float radius_m);
+    void auto_circle_movetoedge_start();
     void auto_circle_start();
     void auto_circle_run();
     void auto_nav_guided_start();
@@ -747,17 +724,16 @@ private:
     void circle_run();
     bool drift_init(bool ignore_checks);
     void drift_run();
-    float get_throttle_assist(float velz, float pilot_throttle_scaled);
+    int16_t get_throttle_assist(float velz, int16_t pilot_throttle_scaled);
     bool flip_init(bool ignore_checks);
     void flip_run();
     bool guided_init(bool ignore_checks);
-    bool guided_takeoff_start(float final_alt_above_home);
+    void guided_takeoff_start(float final_alt_above_home);
     void guided_pos_control_start();
     void guided_vel_control_start();
     void guided_posvel_control_start();
     void guided_angle_control_start();
     void guided_set_destination(const Vector3f& destination);
-    bool guided_set_destination(const Location_Class& dest_loc);
     void guided_set_velocity(const Vector3f& velocity);
     void guided_set_destination_posvel(const Vector3f& destination, const Vector3f& velocity);
     void guided_set_angle(const Quaternion &q, float climb_rate_cms);
@@ -777,7 +753,7 @@ private:
     void land_nogps_run();
     float get_land_descent_speed();
     void land_do_not_use_GPS();
-    void set_mode_land_with_pause(mode_reason_t reason);
+    void set_mode_land_with_pause();
     bool landing_with_GPS();
     bool loiter_init(bool ignore_checks);
     void loiter_run();
@@ -791,16 +767,7 @@ private:
     void poshold_roll_controller_to_pilot_override();
     void poshold_pitch_controller_to_pilot_override();
 
-    // Throw to launch functionality
-    bool throw_init(bool ignore_checks);
-    void throw_exit();
-    void throw_run();
-    bool throw_detected();
-    bool throw_attitude_good();
-    bool throw_height_good();
-
     bool rtl_init(bool ignore_checks);
-    void rtl_restart_without_terrain();
     void rtl_run();
     void rtl_climb_start();
     void rtl_return_start();
@@ -811,8 +778,6 @@ private:
     void rtl_descent_run();
     void rtl_land_start();
     void rtl_land_run();
-    void rtl_build_path(bool terrain_following_allowed);
-    void rtl_compute_return_alt(const Location_Class &rtl_origin_point, Location_Class &rtl_return_target, bool terrain_following_allowed);
     float get_RTL_alt();
     bool sport_init(bool ignore_checks);
     void sport_run();
@@ -831,29 +796,24 @@ private:
     void esc_calibration_startup_check();
     void esc_calibration_passthrough();
     void esc_calibration_auto();
-    bool should_disarm_on_failsafe();
     void failsafe_radio_on_event();
     void failsafe_radio_off_event();
     void failsafe_battery_event(void);
     void failsafe_gcs_check();
     void failsafe_gcs_off_event(void);
-    void failsafe_terrain_check();
-    void failsafe_terrain_set_status(bool data_ok);
-    void failsafe_terrain_on_event();
-    void set_mode_RTL_or_land_with_pause(mode_reason_t reason);
+    void set_mode_RTL_or_land_with_pause();
     void update_events();
     void failsafe_enable();
     void failsafe_disable();
     void fence_check();
     void fence_send_mavlink_status(mavlink_channel_t chan);
-    bool set_mode(control_mode_t mode, mode_reason_t reason);
-    bool gcs_set_mode(uint8_t mode) { return set_mode((control_mode_t)mode, MODE_REASON_GCS_COMMAND); }
+    bool set_mode(uint8_t mode);
     void update_flight_mode();
-    void exit_mode(control_mode_t old_control_mode, control_mode_t new_control_mode);
-    bool mode_requires_GPS(control_mode_t mode);
-    bool mode_has_manual_throttle(control_mode_t mode);
-    bool mode_allows_arming(control_mode_t mode, bool arming_from_gcs);
-    void notify_flight_mode(control_mode_t mode);
+    void exit_mode(uint8_t old_control_mode, uint8_t new_control_mode);
+    bool mode_requires_GPS(uint8_t mode);
+    bool mode_has_manual_throttle(uint8_t mode);
+    bool mode_allows_arming(uint8_t mode, bool arming_from_gcs);
+    void notify_flight_mode(uint8_t mode);
     void check_dynamic_flight(void);
     void read_inertia();
     void read_inertial_altitude();
@@ -882,7 +842,6 @@ private:
     void pre_arm_rc_checks();
     bool pre_arm_gps_checks(bool display_failure);
     bool pre_arm_ekf_attitude_check();
-    bool pre_arm_terrain_check();
     bool arm_checks(bool display_failure, bool arming_from_gcs);
     void init_disarm_motors();
     void motors_output();
@@ -901,7 +860,6 @@ private:
     uint32_t perf_info_get_max_time();
     uint32_t perf_info_get_min_time();
     uint16_t perf_info_get_num_long_running();
-    uint32_t perf_info_get_num_dropped();
     Vector3f pv_location_to_vector(const Location& loc);
     Vector3f pv_location_to_vector_with_default(const Location& loc, const Vector3f& default_posvec);
     float pv_alt_above_origin(float alt_above_home_cm);
@@ -914,11 +872,8 @@ private:
     void enable_motor_output();
     void read_radio();
     void transform_manual_control_to_rc_override(int16_t x, int16_t y, int16_t z, int16_t r, uint16_t buttons);
-    void handle_jsbutton_press(uint8_t button,bool shift=false);
-    JSButton* get_button(uint8_t index);
     void set_throttle_and_failsafe(uint16_t throttle_pwm);
     void set_throttle_zero_flag(int16_t throttle_control);
-    void radio_passthrough_to_motors();
     void init_barometer(bool full_calibration);
     void read_barometer(void);
     void init_sonar(void);
@@ -931,9 +886,6 @@ private:
     void read_battery(void);
     void read_receiver_rssi(void);
     void epm_update();
-    void terrain_update();
-    void terrain_logging();
-    bool terrain_use();
     void report_batt_monitor();
     void report_frame();
     void report_radio();
@@ -996,6 +948,7 @@ private:
 #endif
     void do_wait_delay(const AP_Mission::Mission_Command& cmd);
     void do_within_distance(const AP_Mission::Mission_Command& cmd);
+    void do_change_alt(const AP_Mission::Mission_Command& cmd);
     void do_yaw(const AP_Mission::Mission_Command& cmd);
     void do_change_speed(const AP_Mission::Mission_Command& cmd);
     void do_set_home(const AP_Mission::Mission_Command& cmd);
@@ -1017,7 +970,8 @@ private:
 #if NAV_GUIDED == ENABLED
     bool verify_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
 #endif
-    void auto_spline_start(const Location_Class& destination, bool stopped_at_start, AC_WPNav::spline_segment_end_type seg_end_type, const Location_Class& next_destination);
+    void auto_spline_start(const Vector3f& destination, bool stopped_at_start, AC_WPNav::spline_segment_end_type seg_end_type, const Vector3f& next_spline_destination);
+
     void print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode);
     void log_init(void);
     void run_cli(AP_HAL::UARTDriver *port);
@@ -1060,3 +1014,5 @@ extern Sub sub;
 
 using AP_HAL::millis;
 using AP_HAL::micros;
+
+#endif // _SUB_H_

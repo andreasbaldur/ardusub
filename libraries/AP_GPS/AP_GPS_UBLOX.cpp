@@ -790,12 +790,17 @@ AP_GPS_UBLOX::_parse_gps(void)
             }
             break;
         case MSG_MON_VER:
+            char version_buffer[46]; //17 string swVersion 30 hwVersion 10
             _have_version = true;
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, 
-                                             "u-blox %d HW: %s SW: %s",
-                                             state.instance,
-                                             _buffer.mon_ver.hwVersion,
-                                             _buffer.mon_ver.swVersion);
+            hal.util->snprintf(version_buffer, sizeof(version_buffer),
+                               "u-blox %d HW: %s SW: %s",
+                                state.instance,
+                                _buffer.mon_ver.hwVersion,
+                                _buffer.mon_ver.swVersion);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, version_buffer);
+            if (gps._DataFlash != NULL && gps._DataFlash->logging_started()) {
+                gps._DataFlash->Log_Write_Message(version_buffer);
+            }
             break;
         default:
             unexpected_message();
@@ -923,13 +928,11 @@ AP_GPS_UBLOX::_parse_gps(void)
         Debug("MSG_VELNED");
         _last_vel_time         = _buffer.velned.time;
         state.ground_speed     = _buffer.velned.speed_2d*0.01f;          // m/s
-        state.ground_course    = wrap_360(_buffer.velned.heading_2d * 1.0e-5f);       // Heading 2D deg * 100000
+        state.ground_course_cd = wrap_360_cd(_buffer.velned.heading_2d / 1000);       // Heading 2D deg * 100000 rescaled to deg * 100
         state.have_vertical_velocity = true;
         state.velocity.x = _buffer.velned.ned_north * 0.01f;
         state.velocity.y = _buffer.velned.ned_east * 0.01f;
         state.velocity.z = _buffer.velned.ned_down * 0.01f;
-        state.ground_course = wrap_360(degrees(atan2f(state.velocity.y, state.velocity.x)));
-        state.ground_speed = norm(state.velocity.y, state.velocity.x);
         state.have_speed_accuracy = true;
         state.speed_accuracy = _buffer.velned.speed_accuracy*0.01f;
 #if UBLOX_FAKE_3DLOCK
@@ -1178,41 +1181,4 @@ AP_GPS_UBLOX::_configure_rate(void)
     msg.nav_rate        = 1;
     msg.timeref         = 0;     // UTC time
     _send_message(CLASS_CFG, MSG_CFG_RATE, &msg, sizeof(msg));
-}
-
-void
-AP_GPS_UBLOX::inject_data(uint8_t *data, uint8_t len)
-{
-    if (port->txspace() > len) {
-        port->write(data, len);
-    } else {
-        Debug("UBX: Not enough TXSPACE");
-    }
-}
-
-
-static const char *reasons[] = {"navigation rate",
-                                "posllh rate",
-                                "status rate",
-                                "solution rate",
-                                "velned rate",
-                                "dop rate",
-                                "hw monitor rate",
-                                "hw2 monitor rate",
-                                "raw rate",
-                                "version",
-                                "navigation settings",
-                                "GNSS settings",
-                                "SBAS settings"};
-
-
-void
-AP_GPS_UBLOX::broadcast_configuration_failure_reason(void) const {
-    for (uint8_t i = 0; i < ARRAY_SIZE(reasons); i++) {
-        if (_unconfigured_messages & (1 << i)) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "GPS %d: u-blox %s configuration 0x%02x",
-                state.instance +1, reasons[i], _unconfigured_messages);
-            break;
-        }
-    }
 }

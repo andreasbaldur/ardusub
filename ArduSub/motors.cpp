@@ -16,12 +16,12 @@ void Sub::arm_motors_check()
 	static int16_t arming_counter;
 
     // ensure throttle is down
-    if (channel_throttle->get_control_in() > 0) {
+    if (channel_throttle->control_in > 0) {
         arming_counter = 0;
         return;
     }
 
-    int16_t tmp = channel_yaw->get_control_in();
+    int16_t tmp = channel_yaw->control_in;
 
     // full right
     if (tmp > 4000) {
@@ -77,7 +77,7 @@ void Sub::auto_disarm_check()
 
     // exit immediately if we are already disarmed, or if auto
     // disarming is disabled
-    if (!motors.armed() || disarm_delay_ms == 0 || control_mode == THROW) {
+    if (!motors.armed() || disarm_delay_ms == 0) {
         auto_disarm_begin = tnow_ms;
         return;
     }
@@ -94,7 +94,7 @@ void Sub::auto_disarm_check()
             thr_low = ap.throttle_zero;
         } else {
             float deadband_top = g.rc_3.get_control_mid() + g.throttle_deadzone;
-            thr_low = g.rc_3.get_control_in() <= deadband_top;
+            thr_low = g.rc_3.control_in <= deadband_top;
         }
 
         if (!thr_low || !ap.land_complete) {
@@ -186,7 +186,7 @@ bool Sub::init_arm_motors(bool arming_from_gcs)
     Log_Write_Event(DATA_ARMED);
 
     // log flight mode in case it was changed while vehicle was disarmed
-    DataFlash.Log_Write_Mode(control_mode, control_mode_reason);
+    DataFlash.Log_Write_Mode(control_mode);
 
     // reenable failsafe
     failsafe_enable();
@@ -213,15 +213,11 @@ void Sub::init_disarm_motors()
     gcs_send_text(MAV_SEVERITY_INFO, "Disarming motors");
 #endif
 
-    // save compass offsets learned by the EKF if enabled
-    if (ahrs.use_compass() && compass.get_learn_type() == Compass::LEARN_EKF) {
-        for(uint8_t i=0; i<COMPASS_MAX_INSTANCES; i++) {
-            Vector3f magOffsets;
-            if (ahrs.getMagOffsets(i, magOffsets)) {
-                compass.set_and_save_offsets(i, magOffsets);
-            }
-        }
-	 }
+    // save compass offsets learned by the EKF
+    Vector3f magOffsets;
+    if (ahrs.use_compass() && ahrs.getMagOffsets(magOffsets)) {
+        compass.set_and_save_offsets(compass.get_primary(), magOffsets);
+    }
 
 #if AUTOTUNE_ENABLED == ENABLED
     // save auto tuned parameters
@@ -242,7 +238,7 @@ void Sub::init_disarm_motors()
     mission.reset();
 
     // suspend logging
-    if (!DataFlash.log_while_disarmed()) {
+    if (!(g.log_bitmask & MASK_LOG_WHEN_DISARMED)) {
         DataFlash.EnableWrites(false);
     }
 
@@ -280,7 +276,7 @@ void Sub::lost_vehicle_check()
     }
 
     // ensure throttle is down, motors not armed, pitch and roll rc at max. Note: rc1=roll rc2=pitch
-    if (ap.throttle_zero && !motors.armed() && (channel_roll->get_control_in() > 4000) && (channel_pitch->get_control_in() > 4000)) {
+    if (ap.throttle_zero && !motors.armed() && (channel_roll->control_in > 4000) && (channel_pitch->control_in > 4000)) {
         if (soundalarm_counter >= LOST_VEHICLE_DELAY) {
             if (AP_Notify::flags.vehicle_lost == false) {
                 AP_Notify::flags.vehicle_lost = true;

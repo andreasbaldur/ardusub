@@ -108,7 +108,6 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
         &uartCDriver,  /* uartC */
         &uartDDriver,  /* uartD */
         &uartEDriver,  /* uartE */
-        NULL, // uartF
         &i2c_mgr_instance,
         &i2cDriver, /* Empty i2c */
         &i2cDriver, /* Empty i2c */
