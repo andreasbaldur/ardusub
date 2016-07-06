@@ -117,6 +117,7 @@ public:
 
     // output - sends commands to the motors
     virtual void        output() = 0;
+    virtual void        output_modified(uint8_t mode) = 0;   // Added by Andreas
 
     // output_min - sends minimum values out to the motors
     virtual void        output_min() = 0;
@@ -136,6 +137,7 @@ public:
 protected:
     // output functions that should be overloaded by child classes
     virtual void        output_armed_stabilizing()=0;
+    virtual void        output_armed_modified(uint8_t type)=0;           // Added by Andreas
     virtual void        rc_write(uint8_t chan, uint16_t pwm);
     virtual void        rc_set_freq(uint32_t mask, uint16_t freq_hz);
     virtual void        rc_enable_ch(uint8_t chan);

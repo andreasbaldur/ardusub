@@ -192,14 +192,14 @@ void AP_Motors6DOF::output_armed_stabilizing()
     float   forward_thrust;             // forward thrust input value, +/- 1.0
     float   lateral_thrust;             // lateral thrust input value, +/- 1.0
 
-	roll_thrust = _roll_in;
-	pitch_thrust = _pitch_in;
-	yaw_thrust = _yaw_in;
-	throttle_thrust = get_throttle_bidirectional();
-	forward_thrust = _forward_in;
-	lateral_thrust = _lateral_in;
+    roll_thrust = _roll_in;
+    pitch_thrust = _pitch_in;
+    yaw_thrust = _yaw_in;
+    throttle_thrust = get_throttle_bidirectional();
+    forward_thrust = _forward_in;
+    lateral_thrust = _lateral_in;
 
-    float rpy_out[AP_MOTORS_MAX_NUM_MOTORS]; // buffer so we don't have to multiply coefficients multiple times.
+    float rpy_out[AP_MOTORS_MAX_NUM_MOTORS];    // buffer so we don't have to multiply coefficients multiple times.
     float linear_out[AP_MOTORS_MAX_NUM_MOTORS]; // 3 linear DOF mix for each motor
 
     // initialize limits flags
@@ -221,10 +221,9 @@ void AP_Motors6DOF::output_armed_stabilizing()
     // calculate roll, pitch and yaw for each motor
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-        	rpy_out[i] = roll_thrust * _roll_factor[i] +
+            rpy_out[i] = roll_thrust * _roll_factor[i] +
                          pitch_thrust * _pitch_factor[i] +
                          yaw_thrust * _yaw_factor[i];
-
         }
     }
 
@@ -232,16 +231,100 @@ void AP_Motors6DOF::output_armed_stabilizing()
     // linear factors should be 0.0 or 1.0 for now
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-        	linear_out[i] = throttle_thrust * _throttle_factor[i] +
-        					forward_thrust * _forward_factor[i] +
-							lateral_thrust * _lateral_factor[i];
+            linear_out[i] = throttle_thrust * _throttle_factor[i] +
+                            forward_thrust * _forward_factor[i] +
+                            lateral_thrust * _lateral_factor[i];
         }
     }
 
     // Calculate final output for each motor
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-        	_thrust_rpyt_out[i] = constrain_float(_motor_reverse[i]*(rpy_out[i] + linear_out[i]),-1.0f,1.0f);
+            _thrust_rpyt_out[i] = constrain_float(_motor_reverse[i]*(rpy_out[i] + linear_out[i]),-1.0f,1.0f);
+        }
+    }
+}
+
+// Added by Andreas to allow MANUAL_RAW mode
+void AP_Motors6DOF::output_armed_modified(uint8_t type)
+{
+    uint8_t i;  // general purpose counter
+    
+    // MANUAL
+    if (type == 0) {
+        float   roll_thrust;                // roll thrust input value, +/- 1.0
+        float   pitch_thrust;               // pitch thrust input value, +/- 1.0
+        float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
+        float   throttle_thrust;            // throttle thrust input value, +/- 1.0
+        float   forward_thrust;             // forward thrust input value, +/- 1.0
+        float   lateral_thrust;             // lateral thrust input value, +/- 1.0
+
+        roll_thrust = _roll_in;
+        pitch_thrust = _pitch_in;
+        yaw_thrust = _yaw_in;
+        throttle_thrust = _throttle_in;
+        forward_thrust = _forward_in;
+        lateral_thrust = _lateral_in;
+
+        float rpy_out[AP_MOTORS_MAX_NUM_MOTORS];    // buffer so we don't have to multiply coefficients multiple times.
+        float linear_out[AP_MOTORS_MAX_NUM_MOTORS]; // 3 linear DOF mix for each motor
+
+        // initialize limits flags
+        limit.roll_pitch = false;
+        limit.yaw = false;
+        limit.throttle_lower = false;
+        limit.throttle_upper = false;
+
+        // sanity check throttle is above zero and below current limited throttle
+        if (throttle_thrust <= -_throttle_thrust_max) {
+            throttle_thrust = -_throttle_thrust_max;
+            limit.throttle_lower = true;
+        }
+        if (throttle_thrust >= _throttle_thrust_max) {
+            throttle_thrust = _throttle_thrust_max;
+            limit.throttle_upper = true;
+        }
+
+        // calculate roll, pitch and yaw for each motor
+        for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            if (motor_enabled[i]) {
+                rpy_out[i] = roll_thrust * _roll_factor[i] +
+                             pitch_thrust * _pitch_factor[i] +
+                             yaw_thrust * _yaw_factor[i];
+            }
+        }
+
+        // calculate linear command for each motor
+        // linear factors should be 0.0 or 1.0 for now
+        for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            if (motor_enabled[i]) {
+                linear_out[i] = throttle_thrust * _throttle_factor[i] +
+                                forward_thrust * _forward_factor[i] +
+                                lateral_thrust * _lateral_factor[i];
+            }
+        }
+
+        // Calculate final output for each motor
+        for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            if (motor_enabled[i]) {
+                _thrust_rpyt_out[i] = constrain_float(_motor_reverse[i]*(rpy_out[i] + linear_out[i]),-1.0f,1.0f);
+            }
+        }
+    // MANUAL_RAW
+    } else if (type == 1) {
+        float raw_motor_out[AP_MOTORS_MAX_NUM_MOTORS];   
+        raw_motor_out[0] = _forward_in;
+        raw_motor_out[1] = _lateral_in;
+        raw_motor_out[2] = _throttle_in;
+        raw_motor_out[3] = _roll_in;
+        raw_motor_out[4] = _pitch_in;
+        raw_motor_out[5] = _yaw_in;
+
+        // Calculate final output for each motor
+        for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            if (motor_enabled[i]) {
+                _thrust_rpyt_out[i] = constrain_float(_motor_reverse[i]*raw_motor_out[i],-1.0f,1.0f);
+            }
         }
     }
 }

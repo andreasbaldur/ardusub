@@ -835,6 +835,18 @@ private:
     void stabilize_run();
     bool rov_init(bool ignore_checks);
     void rov_run();
+
+    // === Added by Andreas =====================
+    bool manual_init(bool ignore_checks);
+    void manual_run();
+    bool manual_raw_init(bool ignore_checks);
+    void manual_raw_run();
+    bool stabilize_rp_init(bool ignore_checks);
+    void stabilize_rp_run();
+    bool althold_rp_init(bool ignore_checks);
+    void althold_rp_run();
+    // ==========================================
+
     void crash_check();
     void parachute_check();
     void parachute_release();

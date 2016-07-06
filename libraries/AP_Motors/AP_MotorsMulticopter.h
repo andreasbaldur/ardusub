@@ -38,6 +38,7 @@ public:
 
     // output - sends commands to the motors
     virtual void        output();
+    virtual void        output_modified(uint8_t mode);   // Added by Andreas
 
     // output_min - sends minimum values out to the motors
     void                output_min();

@@ -262,7 +262,21 @@ void Sub::motors_output()
             // invert motor_emergency_stop status for motors to run.
             motors.set_interlock(!ap.motor_emergency_stop);
         }
-        motors.output();
+        // Send output dependent on control mode
+        switch(control_mode)
+        {
+            case MANUAL:
+                motors.output_modified(0);
+                break;
+            case MANUAL_RAW:
+                motors.output_modified(1);
+                break;
+            case STABILIZE_RP:
+            case ALT_HOLD_RP:
+            default:
+                motors.output();
+                break;
+        }
     }
 }
 

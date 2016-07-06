@@ -245,7 +245,22 @@ void Sub::fast_loop()
     read_AHRS();
 
     // run low level rate controllers that only require IMU data
-    attitude_control.rate_controller_run();
+    switch(control_mode)
+    {
+        case MANUAL:
+        case MANUAL_RAW:
+            // no roll/pitch/yaw stabilization
+            break;
+        case STABILIZE_RP:
+        case ALT_HOLD_RP:
+            // only roll/pitch stabilization
+            attitude_control.roll_pitch_rate_controller_run();
+            break;
+        default:
+            // both roll/pitch and yaw stabilization
+            attitude_control.rate_controller_run();
+            break;
+    }
 
     // send outputs to the motors library
     motors_output();

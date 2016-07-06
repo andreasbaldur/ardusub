@@ -112,7 +112,11 @@ enum control_mode_t {
     AUTOTUNE =     15,  // automatically tune the vehicle's roll and pitch gains
     POSHOLD =      16,  // automatic position hold with manual override, with automatic throttle
     BRAKE =        17,  // full-brake using inertial/GPS system, no pilot input
-	THROW =        18   // throw to launch mode using inertial/GPS system, no pilot input
+	THROW =        18,  // throw to launch mode using inertial/GPS system, no pilot input
+    MANUAL =       19,  // manual control of thrusters using thruster configuration matrix
+    MANUAL_RAW =   20,  // manual control of individual thrusters
+    STABILIZE_RP = 21,  // roll and pitch stabilization with manual throttle and yaw thrust
+    ALT_HOLD_RP =  22   // roll/pitch and depth stabilization with manual yaw thrust
 };
 
 enum mode_reason_t {

@@ -40,6 +40,7 @@ protected:
     void add_motor_raw_6dof(int8_t motor_num, float roll_fac, float pitch_fac, float yaw_fac, float climb_fac, float forward_fac, float lat_fac, uint8_t testing_order);
 
     void output_armed_stabilizing() override;
+    void output_armed_modified(uint8_t type) override;           // Added by Andreas
 
     // Parameters
     AP_Int8             _motor_reverse[8];

@@ -174,6 +174,34 @@ void AP_MotorsMulticopter::output()
     output_to_motors();
 };
 
+// === Added by Andreas ===========================================
+// This is a modified version of the AP_MotorsMulticopter::output().
+// output_modified - sends commands to the motors
+void AP_MotorsMulticopter::output_modified(uint8_t type)
+{
+    // update throttle filter
+    update_throttle_filter();
+
+    // update battery resistance
+    update_battery_resistance();
+
+    // calc filtered battery voltage and lift_max
+    update_lift_max_from_batt_voltage();
+
+    // run spool logic
+    output_logic();
+
+    // calculate thrust and save result in _thrust_rpyt_out [-1;1]
+    output_armed_modified(type);
+
+    // apply any thrust compensation for the frame
+    thrust_compensation();
+    
+    // convert _thrust_rpyt_out values to pwm
+    output_to_motors();
+};
+// ================================================================
+
 // sends minimum values out to the motors
 void AP_MotorsMulticopter::output_min()
 {

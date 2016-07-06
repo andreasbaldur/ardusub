@@ -95,6 +95,22 @@ bool Sub::set_mode(control_mode_t mode, mode_reason_t reason)
         	success = throw_init(ignore_checks);
         	break;
 
+        case MANUAL:
+            success = manual_init(ignore_checks);
+            break;
+
+        case MANUAL_RAW:
+            success = manual_raw_init(ignore_checks);
+            break;
+
+        case STABILIZE_RP:
+            success = stabilize_rp_init(ignore_checks);
+            break;
+
+        case ALT_HOLD_RP:
+            success = althold_rp_init(ignore_checks);
+            break;
+
         default:
             success = false;
             break;
@@ -207,6 +223,23 @@ void Sub::update_flight_mode()
         case THROW:
         	throw_run();
         	break;
+
+        case MANUAL:
+            manual_run();
+            break;
+
+        case MANUAL_RAW:
+            manual_raw_run();
+            break;
+
+        case STABILIZE_RP:
+            stabilize_rp_run();
+            break;
+
+        case ALT_HOLD_RP:
+            althold_rp_run();
+            break;
+
         default:
         	break;
     }
@@ -270,6 +303,9 @@ bool Sub::mode_has_manual_throttle(control_mode_t mode) {
     switch(mode) {
         case ACRO:
         case STABILIZE:
+        case MANUAL:
+        case MANUAL_RAW:
+        case STABILIZE_RP:
             return true;
         default:
             return false;
@@ -281,7 +317,7 @@ bool Sub::mode_has_manual_throttle(control_mode_t mode) {
 // mode_allows_arming - returns true if vehicle can be armed in the specified mode
 //  arming_from_gcs should be set to true if the arming request comes from the ground station
 bool Sub::mode_allows_arming(control_mode_t mode, bool arming_from_gcs) {
-	if (mode_has_manual_throttle(mode) || mode == LOITER || mode == ALT_HOLD || mode == POSHOLD || mode == DRIFT || mode == SPORT || mode == THROW || (arming_from_gcs && mode == GUIDED)) {
+	if (mode_has_manual_throttle(mode) || mode == LOITER || mode == ALT_HOLD || mode == ALT_HOLD_RP || mode == POSHOLD || mode == DRIFT || mode == SPORT || mode == THROW || (arming_from_gcs && mode == GUIDED)) {
         return true;
     }
     return false;
@@ -361,6 +397,18 @@ void Sub::print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
         break;
     case THROW:
         port->print("THROW");
+        break;
+    case MANUAL:
+        port->print("MANUAL");
+        break;
+    case MANUAL_RAW:
+        port->print("MANUAL_RAW");
+        break;
+    case STABILIZE_RP:
+        port->print("STABILIZE_RP");
+        break;
+    case ALT_HOLD_RP:
+        port->print("ALT_HOLD_RP");
         break;
     default:
         port->printf("Mode(%u)", (unsigned)mode);

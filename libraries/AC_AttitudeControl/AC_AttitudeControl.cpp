@@ -401,6 +401,14 @@ void AC_AttitudeControl::rate_controller_run()
     control_monitor_update();
 }
 
+// Added by Andreas
+void AC_AttitudeControl::roll_pitch_rate_controller_run()
+{
+    _motors.set_roll(rate_bf_to_motor_roll(_ang_vel_target_rads.x));
+    _motors.set_pitch(rate_bf_to_motor_pitch(_ang_vel_target_rads.y));
+    control_monitor_update();
+}
+
 void AC_AttitudeControl::euler_rate_to_ang_vel(const Vector3f& euler_rad, const Vector3f& euler_rate_rads, Vector3f& ang_vel_rads)
 {
     float sin_theta = sinf(euler_rad.y);
