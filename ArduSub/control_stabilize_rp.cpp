@@ -9,9 +9,9 @@
 // stabilize_init - initialise stabilize controller
 bool Sub::stabilize_rp_init(bool ignore_checks)
 {
+	// Reuse the stabilize_init
     bool success = stabilize_init(ignore_checks);
-    gcs_send_text_fmt(MAV_SEVERITY_INFO, "STABILIZE_RP initialized!");
-
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "STABILIZE_RP flight mode initialized!");
     return success;
 }
 

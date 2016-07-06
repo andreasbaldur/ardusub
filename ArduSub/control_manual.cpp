@@ -4,16 +4,10 @@
 // manual_init - initialise manual controller
 bool Sub::manual_init(bool ignore_checks)
 {
-    // if landed and the mode we're switching from does not have manual throttle and the throttle stick is too high
-    if (motors.armed() && ap.land_complete && !mode_has_manual_throttle(control_mode) && (get_pilot_desired_throttle(channel_throttle->get_control_in()) > get_non_takeoff_throttle())) {
-        return false;
-    }
-    // set target altitude to zero for reporting
-    pos_control.set_alt_target(0);
-
-    gcs_send_text_fmt(MAV_SEVERITY_INFO, "MANUAL: Mode Initialized");
-
-    return true;
+    // Reuse the stabilize_init
+    bool success =  stabilize_init(ignore_checks);
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "MANUAL flight mode initialized!");
+    return success;
 }
 
 // manual_run - runs the manual (passthrough) controller
