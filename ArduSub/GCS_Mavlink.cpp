@@ -823,10 +823,20 @@ GCS_MAVLINK_Sub::data_stream_send(void)
         return;
     }
 
+    // ANDREAS:
+    // Commented out useless messages
+
     if (stream_trigger(STREAM_RAW_SENSORS)) {
         send_message(MSG_RAW_IMU1);
         send_message(MSG_RAW_IMU2);
         send_message(MSG_RAW_IMU3);
+
+        // Added by Andreas
+        send_message(MSG_ATTITUDE);
+
+        // Added by Andreas
+        send_message(MSG_LOCATION);
+        send_message(MSG_LOCAL_POSITION);
     }
 
     if (sub.gcs_out_of_time) return;
