@@ -36,6 +36,7 @@ void Sub::althold_run()
     pos_control.set_accel_z(g.pilot_accel_z);
 
     // apply SIMPLE mode transform to pilot inputs
+    // This changes roll and pitch which is not user-controllable anyways, so forget this call.
     update_simple_mode();
 
     // get pilot desired lean angles
@@ -44,6 +45,19 @@ void Sub::althold_run()
 
     // get pilot's desired yaw rate
     float target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+
+    // === [VERIFIED]Added by Andreas
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "channel_yaw = %u",channel_yaw->get_control_in());
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "target_yaw_rate = %0.2f",target_yaw_rate);
+    // remember to declare public
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "yaw_accel_limit = %f",attitude_control.get_accel_yaw_max_radss());
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_rate_bf_ff_enabled = %d",attitude_control._rate_bf_ff_enabled);    // returns 1
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_att_ctrl_use_accel_limit = %d",attitude_control._att_ctrl_use_accel_limit);    // returns 1
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_yaw_max = %f",attitude_control._accel_yaw_max);    // returns 0.0000
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "%f",attitude_control._p_angle_yaw.kP());    // returns 0.0000
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "%f",AC_ATTITUDE_CONTROL_ANGLE_P);    // returns 6.0.
+    
+    // ====================
 
     // get pilot desired climb rate
     float target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
@@ -100,6 +114,12 @@ void Sub::althold_run()
         // set motors to full range
         motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
+        // === Andreas:
+        // Attitude controlleren sender ikke endelige kontrolsignaler til thrusterne. Dette sker
+        // via "attitude_control.rate_controller_run()", som kaldes i ArduSub.cpp.
+        // Bemærk at inputtet til nedenstående kald er input euler vinkler og euler rate.
+        // Dette er IKKE nødvendigvis det samme som angular velocity (som er set fra BODY frame).
+        // Nedenstående funktion udregner angular velocity target, som så bliver anvendt af rate controlleren.
         // call attitude controller
         attitude_control.input_euler_angle_roll_pitch_euler_rate_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
 

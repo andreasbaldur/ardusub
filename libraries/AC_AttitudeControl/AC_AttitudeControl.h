@@ -223,7 +223,9 @@ public:
     // User settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
-protected:
+// Changed by Andreas: Originally protected!
+// Changed to make access to get_accel_yaw_max_radss().
+public:
     // Retrieve a rotation matrix from the vehicle body frame to NED earth frame
     void get_rotation_vehicle_to_ned(Matrix3f& m);
 

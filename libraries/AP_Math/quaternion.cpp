@@ -159,9 +159,10 @@ void Quaternion::rotate(const Vector3f &v)
     (*this) *= r;
 }
 
+// === Andreas: Denne udregner axis-angle repræsentationen af Quaternionen.
 void Quaternion::to_axis_angle(Vector3f &v)
 {
-    float l = sqrt(sq(q2)+sq(q3)+sq(q4));
+    float l = sqrt(sq(q2)+sq(q3)+sq(q4));   // Vektorens længde
     v = Vector3f(q2,q3,q4);
     if (l >= 1.0e-12f) {
         v /= l;

@@ -572,6 +572,13 @@ private:
     static const AP_Param::Info var_info[];
     static const struct LogStructure log_structure[];
 
+    //=== Created by: Andreas
+    void baldurLoop(void);
+    //AC_PID _baldurs_pid(1,2,3,4,5,6);
+    AC_PID _baldurs_pid;
+    //AC_PID(float initial_p, float initial_i, float initial_d, float initial_imax, float initial_filt_hz, float dt);
+    // ===================
+
     void compass_accumulate(void);
     void compass_cal_update(void);
     void barometer_accumulate(void);

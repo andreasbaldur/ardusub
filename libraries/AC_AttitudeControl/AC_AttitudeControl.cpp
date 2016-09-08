@@ -113,9 +113,13 @@ void AC_AttitudeControl::shift_ef_yaw_target(float yaw_shift_cd)
 void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(float euler_roll_angle_cd, float euler_pitch_angle_cd, float euler_yaw_rate_cds, float smoothing_gain)
 {
     // Convert from centidegrees on public interface to radians
-    float euler_roll_angle_rad = radians(euler_roll_angle_cd*0.01f);
-    float euler_pitch_angle_rad = radians(euler_pitch_angle_cd*0.01f);
-    float euler_yaw_rate_rads = radians(euler_yaw_rate_cds*0.01f);
+    // Bemærk at roll og pitch er orienteringer, som ønskes stabiliseret, dvs ønskes 0.
+    // Derimod er yaw en vinkelhastighed (givet i Euler rate, dvs. yaw-dot set fra verdenskoordinatsystemet).
+    // Controlleren tager et referencesignal i angular rate, dvs. set fra BODY frame.
+    // I tilfælde at roll og pitch vinklerne er 0, er yaw-rate i NED og yaw-rate i BODY det samme (r = psi_dot).
+    float euler_roll_angle_rad = radians(euler_roll_angle_cd*0.01f);    // euler roll angle (position)
+    float euler_pitch_angle_rad = radians(euler_pitch_angle_cd*0.01f);  // euler pitch angle (position)
+    float euler_yaw_rate_rads = radians(euler_yaw_rate_cds*0.01f);      // euler yaw rate (hastighed)
 
     // Sanity check smoothing gain
     smoothing_gain = constrain_float(smoothing_gain,1.0f,50.0f);
@@ -161,6 +165,9 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(floa
     }
     _att_target_euler_rad.y = constrain_float(_att_target_euler_rad.y, -get_tilt_limit_rad(), get_tilt_limit_rad());
 
+    // === Andreas:
+    // The get_accel_yaw_max_radss() has been verified to be 0!
+    // I.e. no yaw acceleration limit.
     if (get_accel_yaw_max_radss() > 0.0f) {
         // When yaw acceleration limiting is enabled, the yaw input shaper constrains angular acceleration about the yaw axis, slewing
         // the output rate towards the input rate.
@@ -172,18 +179,33 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(floa
     } else {
         // When yaw acceleration limiting is disabled, the attitude target is simply rotated using the input rate and the input rate
         // is fed forward into the rate controller.
-        _att_target_euler_rate_rads.z = euler_yaw_rate_rads;
+        // Bemærk: _att_target_euler_rate_rads er euler-rate, og IKKE BODY-frame angular velocity!
+        _att_target_euler_rate_rads.z = euler_yaw_rate_rads;    // := psi_des(k) = r_des(k)
+
+        // Følgende udregner yaw-vinkel (position) baseret på eksisterende ønskede
+        // orientering og rate input * tidsskridt, dvs. ved integration af desired rate.
+        // Bemærk: _att_target_euler_rad.z := psi_des(k+1) udregnes.
         update_att_target_yaw(_att_target_euler_rate_rads.z, AC_ATTITUDE_RATE_STAB_YAW_OVERSHOOT_ANGLE_MAX_RAD);
     }
 
     // Convert euler angle derivative of desired attitude into a body-frame angular velocity vector for feedforward
+    // === Andreas: _rate_bf_ff_enabled = 1 (er blevet verificeret ved print til terminal)
+    // _rate_bf_ff := Rate Body Frame Feedforward
+    // Med andre ord anvendes feedforward i controlleren.
     if (_rate_bf_ff_enabled) {
+        // Her bliver angular velocity udregnet på baggrund af target euler vinkler og euler rate.
+        // Outputtet af funktionen er: _att_target_ang_vel_rads = [p,q,r]' (BODY frame angular velocity)
         euler_rate_to_ang_vel(_att_target_euler_rad, _att_target_euler_rate_rads, _att_target_ang_vel_rads);
     } else {
         euler_rate_to_ang_vel(_att_target_euler_rad, Vector3f(0,0,_att_target_euler_rate_rads.z), _att_target_ang_vel_rads);
     }
 
     // Call attitude controller
+    // Euler attitude controller input:
+    // * Attitude target Euler vinkler: [phi,theta,psi]'
+    // * Attitude target body-frame angular velocity: [p,q,r]'
+    // Her sendes attutide target givet i euler vinkler og euler vinkelhastigheder videre til en
+    // attitude controller. Bemærk at dette ikke er en rate controller.
     attitude_controller_run_euler(_att_target_euler_rad, _att_target_ang_vel_rads);
 }
 
@@ -360,10 +382,13 @@ void AC_AttitudeControl::input_att_quat_bf_ang_vel(const Quaternion& att_target_
     ang_vel_to_euler_rate(Vector3f(_ahrs.roll,_ahrs.pitch,_ahrs.yaw), _ang_vel_target_rads, _att_target_euler_rate_rads);
 }
 
+// att_target_euler_rad = [phi,theta,psi]
+// att_target_ang_vel_rads = [p,q,r]
 void AC_AttitudeControl::attitude_controller_run_euler(const Vector3f& att_target_euler_rad, const Vector3f& att_target_ang_vel_rads)
 {
     // Compute quaternion target attitude
     Quaternion att_target_quat;
+    // Her bliver Euler angles lavet om til quaternions.
     att_target_quat.from_euler(att_target_euler_rad.x, att_target_euler_rad.y, att_target_euler_rad.z);
 
     // Call quaternion attitude controller
@@ -373,28 +398,53 @@ void AC_AttitudeControl::attitude_controller_run_euler(const Vector3f& att_targe
 void AC_AttitudeControl::attitude_controller_run_quat(const Quaternion& att_target_quat, const Vector3f& att_target_ang_vel_rads)
 {
     // Update euler attitude target and angular velocity target
+    // Rb2n_target := att_target_quat.
     att_target_quat.to_euler(_att_target_euler_rad.x,_att_target_euler_rad.y,_att_target_euler_rad.z);
-    _att_target_ang_vel_rads = att_target_ang_vel_rads;
+    _att_target_ang_vel_rads = att_target_ang_vel_rads; // [p,q,r] givet direkte fra brugerens referencesignal
 
     // Retrieve quaternion vehicle attitude
     // TODO add _ahrs.get_quaternion()
+    // Rb2n := att_vehicle_quat
     Quaternion att_vehicle_quat;
     att_vehicle_quat.from_rotation_matrix(_ahrs.get_rotation_body_to_ned());
 
     // Compute attitude error
+    // Denne sætter: "_att_error_rot_vec_rad" som bliver brugt af
+    // update_ang_vel_target_from_att_error() der udregner feedforward.
+    // Her køres en feedforward P-controller
+    // Her udregnes orienteringsforskellen mellem den aktuelle (att_vehicle_quat)
+    // og den ønskede (att_target_quat), og resultatet gemmes i _att_error_rot_vec_rad.
+    // Hvis Rb2n'*Rb2n_target er kun eye(3) såfremt target og aktuel orientering er ens.
+    // Fejlvinklerne der kommer ud er givet i NED frame:
+    //
+    //  _att_error_rot_vec_rad := [err_phi, err_theta, err_psi]'
+    //
+    // Med andre ord indeholder _att_error_rot_vec_rad de vinkler der skal lægges til de
+    // aktuelle vinkler for at ende op i den ønskede orientering.
+    // Tænker man udelukkende på yaw-subsystemet, svarer dette til at 
     (att_vehicle_quat.inverse()*att_target_quat).to_axis_angle(_att_error_rot_vec_rad);
 
     // Compute the angular velocity target from the attitude error
+    // Her køres P-controller, som udregner: _ang_vel_target_rads
+    // P-controller gain er 6.0
     update_ang_vel_target_from_att_error();
 
     // Add the angular velocity feedforward, rotated into vehicle frame
+    // Bemærk der er 3 frames:
+    // (r): reference: Frame som beskriver den ønskede orientering (target)
+    // (v): vehicle: nuværende BODY frame
+    // (n): NED: Inertielt verdenskoordinatsystem.
     Matrix3f Trv;
     get_rotation_reference_to_vehicle(Trv);
-    _ang_vel_target_rads += Trv * _att_target_ang_vel_rads;
+    _ang_vel_target_rads += Trv * _att_target_ang_vel_rads; // _att står for attitude bidraget
+    // Idet "_ang_vel_target_rads" bliver anvendt af BODY-frame controller, må vinkelhastigheden
+    // være defineret i BODY / vehicle frame.
 }
 
 void AC_AttitudeControl::rate_controller_run()
 {
+    // rate_bf_ := Rate Body Frame controllers.
+    // Dvs. referencesignaler (targets) skal repræsenteres i body-frame.
     _motors.set_roll(rate_bf_to_motor_roll(_ang_vel_target_rads.x));
     _motors.set_pitch(rate_bf_to_motor_pitch(_ang_vel_target_rads.y));
     _motors.set_yaw(rate_bf_to_motor_yaw(_ang_vel_target_rads.z));
@@ -411,11 +461,24 @@ void AC_AttitudeControl::roll_pitch_rate_controller_run()
 
 void AC_AttitudeControl::euler_rate_to_ang_vel(const Vector3f& euler_rad, const Vector3f& euler_rate_rads, Vector3f& ang_vel_rads)
 {
+
     float sin_theta = sinf(euler_rad.y);
     float cos_theta = cosf(euler_rad.y);
     float sin_phi = sinf(euler_rad.x);
     float cos_phi = cosf(euler_rad.x);
 
+    // === Andreas:
+    // See: Fossen page. 24 eq. (2.26) about "Angular Velocity Transformation"
+    // Theta_nb_dot = T_Theta * omega (hvor omega er angular velocity)
+    // omega = T_theta^-1 * Theta_nb_dot.
+    //
+    //              [ 1        0         -sin_theta
+    // T_theta^-1 =   0  cos_phi  cos_theta*sin_phi
+    //                0 -sin_phi  cos_theta*cos_phi ]
+    //
+    // Bemærk, at givet roll og pitch er 0, reduceres T_Theta til en identitetsmatrice I3,
+    // hvormed euler rate er det samme som angular rate. 
+    //
     ang_vel_rads.x = euler_rate_rads.x - sin_theta * euler_rate_rads.z;
     ang_vel_rads.y = cos_phi  * euler_rate_rads.y + sin_phi * cos_theta * euler_rate_rads.z;
     ang_vel_rads.z = -sin_phi * euler_rate_rads.y + cos_theta * cos_phi * euler_rate_rads.z;
@@ -471,10 +534,14 @@ void AC_AttitudeControl::update_att_target_yaw(float euler_yaw_rate_rads, float 
     float angle_error = constrain_float(wrap_PI(_att_target_euler_rad.z - _ahrs.yaw), -overshoot_max_rad, overshoot_max_rad);
 
     // Update attitude target from constrained angle error
+    // Denne udregner den nuværende ønskede yaw-vinkel.
     _att_target_euler_rad.z = angle_error + _ahrs.yaw;
 
     // Increment the attitude target
-    _att_target_euler_rad.z += euler_yaw_rate_rads * _dt;
+    // Givet at der er et ønske om at ændre hastighed, så beregnes her den nye ønskede orientering
+    _att_target_euler_rad.z += euler_yaw_rate_rads * _dt;   // psi_des(k+1) := psi_des(k) + r_des(k) * dt, dvs. den ønskede vinkel til næste tidsskridt
+
+    // I og med at vi arbejder med en vinkel, så sikres at den stadig ligger i 2pi området.
     _att_target_euler_rad.z = wrap_2PI(_att_target_euler_rad.z);
 }
 
@@ -506,9 +573,16 @@ void AC_AttitudeControl::update_ang_vel_target_from_att_error()
     }
 
     // Compute the yaw angular velocity demand from the roll angle error
+    // === Andreas:
+    // _att_ctrl_use_accel_limit == 1 (tjekket via terminal print)
+    // _accel_yaw_max == 0.00000 (tjekket via terminal print)
+    // _p_angle_yaw.kP() == 6.0
     if (_att_ctrl_use_accel_limit && _accel_yaw_max > 0.0f) {
+        // Bliver IKKE kørt!
         _ang_vel_target_rads.z = sqrt_controller(_att_error_rot_vec_rad.z, _p_angle_yaw.kP(), constrain_float(get_accel_yaw_max_radss()/2.0f,  AC_ATTITUDE_ACCEL_Y_CONTROLLER_MIN_RADSS, AC_ATTITUDE_ACCEL_Y_CONTROLLER_MAX_RADSS));
     }else{
+        // Denne bliver kørt!
+        // P-angle controller
         _ang_vel_target_rads.z = _p_angle_yaw.kP() * _att_error_rot_vec_rad.z;
     }
 

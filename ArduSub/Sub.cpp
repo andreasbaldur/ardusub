@@ -23,6 +23,19 @@ const AP_HAL::HAL& hal = AP_HAL::get_HAL();
   constructor for main Sub class
  */
 Sub::Sub(void) :
+    
+    //
+    //=== Created by Andreas ===========
+    // pid(Kp, Ki, Kd, Imax, FilterFrequency, dT)
+    #define PID_P           0.180f
+    #define PID_I           0.018f
+    #define PID_D           0.0f
+    #define PID_IMAX        0.222f
+    //#define PID_FILT_HZ     30.0f
+    #define PID_FILT_HZ     100000.0f
+    #define PID_DT          0.0025f
+    _baldurs_pid(PID_P,PID_I,PID_D,PID_IMAX,PID_FILT_HZ,PID_DT),
+    //==================================
 	DataFlash{FIRMWARE_STRING},
     flight_modes(&g.flight_mode1),
     mission(ahrs, 

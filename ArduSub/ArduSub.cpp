@@ -146,8 +146,39 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
 #ifdef USERHOOK_SUPERSLOWLOOP
     SCHED_TASK(userhook_SuperSlowLoop, 1,   75),
 #endif
+    //SCHED_TASK(baldurLoop, 10,   110)
 };
 
+/*
+  Created by: Andreas
+  This loop is devoted for test purposes.
+  ---
+  Frequency: 1 Hz
+ */
+
+
+int timeSec = 0;
+float unit_step_input = 0.0;
+void Sub::baldurLoop()
+{
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "t = %d sec.",timeSec);
+
+    // Apply step input
+    if ( timeSec++ >= 5 )
+    {
+        unit_step_input = 1.0;
+    }
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "u = %0.2f",unit_step_input);
+
+    _baldurs_pid.set_input_filter_all(unit_step_input);
+    float proportional_output = _baldurs_pid.get_p();
+    float integrator_output = _baldurs_pid.get_i();
+/*    gcs_send_text_fmt(MAV_SEVERITY_INFO, "p: %0.5f",proportional_output);
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "i: %0.5f",integrator_output);
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "acro_yaw_p: %f",g.acro_yaw_p);*/
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "yaw_max_radss: %f",AC_ATTITUDE_CONTROL_ACCEL_Y_MAX_DEFAULT_CDSS);
+
+}
 
 void Sub::setup()
 {
