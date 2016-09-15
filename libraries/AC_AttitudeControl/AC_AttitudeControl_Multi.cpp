@@ -158,7 +158,7 @@ float AC_AttitudeControl_Multi::get_boosted_throttle(float throttle_in)
     // inverted_factor is 1 for tilt angles below 60 degrees
     // inverted_factor reduces from 1 to 0 for tilt angles between 60 and 90 degrees
 
-    float cos_tilt = _ahrs.cos_pitch() * _ahrs.cos_roll();
+    float cos_tilt = _ahrs.cos_pitch() * _ahrs.cos_roll();      // given that roll/pitch are perfectly stabilized, cos_tilt == 1
     float inverted_factor = constrain_float(2.0f*cos_tilt, 0.0f, 1.0f);
     float boost_factor = 1.0f/constrain_float(cos_tilt, 0.5f, 1.0f);
 

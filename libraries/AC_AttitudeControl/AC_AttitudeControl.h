@@ -17,6 +17,8 @@
 #define AC_ATTITUDE_CONTROL_DEGX100                           5729.57795f      // constant to convert from radians to centidegrees
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduSub)
+ // Andreas: Selvom Kp-ledet pr. default bliver sat til 6.0f, kan det ses via print til terminal
+ // at _p_angle_yaw i virkeligheden := 0, så der laves altså IKKE position feedforward.
  #define AC_ATTITUDE_CONTROL_ANGLE_P                           6.0f             // default angle P gain for roll, pitch and yaw
 #else
  #define AC_ATTITUDE_CONTROL_ANGLE_P                           4.5f             // default angle P gain for roll, pitch and yaw

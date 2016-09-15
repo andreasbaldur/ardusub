@@ -71,8 +71,8 @@ public:
     float               get_roll() const { return _roll_in; }
     float               get_pitch() const { return _pitch_in; }
     float               get_yaw() const { return _yaw_in; }
-    float               get_throttle() const { return constrain_float(_throttle_filter.get(),0.0f,1.0f); }
-    float               get_throttle_bidirectional() const { return constrain_float(2*(_throttle_filter.get()-0.5f),-1.0f,1.0f); }
+    float               get_throttle() const { return constrain_float(_throttle_filter.get(),0.0f,1.0f); }  // in range 0 to 1
+    float               get_throttle_bidirectional() const { return constrain_float(2*(_throttle_filter.get()-0.5f),-1.0f,1.0f); }  // in range -1 to 1, i.e. allowing both to go up and down.
     float               get_forward() const { return _forward_in; }
 	float               get_lateral() const { return _lateral_in; }
 
@@ -134,7 +134,8 @@ public:
     // pilot input in the -1 ~ +1 range for roll, pitch and yaw. 0~1 range for throttle
     void                set_radio_passthrough(float roll_input, float pitch_input, float throttle_input, float yaw_input);
 
-protected:
+// Andreas: Usually protected
+public:
     // output functions that should be overloaded by child classes
     virtual void        output_armed_stabilizing()=0;
     virtual void        output_armed_modified(uint8_t type)=0;           // Added by Andreas

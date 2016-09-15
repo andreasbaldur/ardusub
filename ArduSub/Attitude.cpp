@@ -96,6 +96,8 @@ float Sub::get_look_ahead_yaw()
 
 // update_thr_average - update estimated throttle required to hover (if necessary)
 //  should be called at 100hz
+// Task som kaldes med 100 Hz og som sørger for at estimere den throttle som lige
+// netop kompensere fra tyngdekraften.
 void Sub::update_thr_average()
 {
     // ensure throttle_average has been initialised
@@ -168,20 +170,25 @@ float Sub::get_pilot_desired_climb_rate(float throttle_control)
     }
 
     float desired_rate = 0.0f;
-    float mid_stick = channel_throttle->get_control_mid();
-    float deadband_top = mid_stick + g.throttle_deadzone;
+    float mid_stick = channel_throttle->get_control_mid();  // mid_stick = 480
+    float deadband_top = mid_stick + g.throttle_deadzone;   // g.throttle_deadzone == 100
     float deadband_bottom = mid_stick - g.throttle_deadzone;
 
+    // Some calculations:
+    // deadband_top := 580
+    // deadband_bottom := 380
+    // 
+
     // ensure a reasonable throttle value
-    throttle_control = constrain_float(throttle_control,0.0f,1000.0f);
+    throttle_control = constrain_float(throttle_control,0.0f,1000.0f);  // changes nothing
 
     // ensure a reasonable deadzone
-    g.throttle_deadzone = constrain_int16(g.throttle_deadzone, 0, 400);
+    g.throttle_deadzone = constrain_int16(g.throttle_deadzone, 0, 400); // changes nothing
 
     // check throttle is above, below or in the deadband
     if (throttle_control < deadband_bottom) {
         // below the deadband
-        desired_rate = g.pilot_velocity_z_max * (throttle_control-deadband_bottom) / deadband_bottom;
+        desired_rate = g.pilot_velocity_z_max * (throttle_control-deadband_bottom) / deadband_bottom;   // g.pilot_velocity_z_max = 50
     }else if (throttle_control > deadband_top) {
         // above the deadband
         desired_rate = g.pilot_velocity_z_max * (throttle_control-deadband_top) / (1000.0f-deadband_top);

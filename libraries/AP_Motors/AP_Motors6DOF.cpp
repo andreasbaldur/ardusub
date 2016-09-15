@@ -195,6 +195,8 @@ void AP_Motors6DOF::output_armed_stabilizing()
     roll_thrust = _roll_in;
     pitch_thrust = _pitch_in;
     yaw_thrust = _yaw_in;
+    // constrain_float(2*(_throttle_filter.get()-0.5f),-1.0f,1.0f);
+    // this simplifies to: 2*(input-0.5)
     throttle_thrust = get_throttle_bidirectional();
     forward_thrust = _forward_in;
     lateral_thrust = _lateral_in;

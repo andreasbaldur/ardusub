@@ -296,7 +296,8 @@ public:
 
     static const struct AP_Param::GroupInfo var_info[];
 
-private:
+// Andreas: Changed from private to public 
+public:
 
     // general purpose flags
     struct poscontrol_flags {

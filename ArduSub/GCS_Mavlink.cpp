@@ -2133,6 +2133,7 @@ void Sub::gcs_check_input(void)
     }
 }
 
+// Andreas: Added static
 void Sub::gcs_send_text(MAV_SEVERITY severity, const char *str)
 {
     GCS_MAVLINK::send_statustext(severity, 0xFF, str);
@@ -2143,6 +2144,7 @@ void Sub::gcs_send_text(MAV_SEVERITY severity, const char *str)
  *  only one fits in the queue, so if you send more than one before the
  *  last one gets into the serial buffer then the old one will be lost
  */
+ // Andreas: Added static
 void Sub::gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...)
 {
 	char str[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] {};

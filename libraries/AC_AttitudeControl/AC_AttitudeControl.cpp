@@ -166,7 +166,7 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(floa
     _att_target_euler_rad.y = constrain_float(_att_target_euler_rad.y, -get_tilt_limit_rad(), get_tilt_limit_rad());
 
     // === Andreas:
-    // The get_accel_yaw_max_radss() has been verified to be 0!
+    // The get_accel_yaw_max_radss() has been verified to be 0! Also see #define AC_ATTITUDE_CONTROL_ACCEL_Y_MAX_DEFAULT_CDSS 0.0f in AC_AttitudeControl.h
     // I.e. no yaw acceleration limit.
     if (get_accel_yaw_max_radss() > 0.0f) {
         // When yaw acceleration limiting is enabled, the yaw input shaper constrains angular acceleration about the yaw axis, slewing
@@ -180,7 +180,7 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(floa
         // When yaw acceleration limiting is disabled, the attitude target is simply rotated using the input rate and the input rate
         // is fed forward into the rate controller.
         // Bemærk: _att_target_euler_rate_rads er euler-rate, og IKKE BODY-frame angular velocity!
-        _att_target_euler_rate_rads.z = euler_yaw_rate_rads;    // := psi_des(k) = r_des(k)
+        _att_target_euler_rate_rads.z = euler_yaw_rate_rads;    // := psi_dot_des(k)
 
         // Følgende udregner yaw-vinkel (position) baseret på eksisterende ønskede
         // orientering og rate input * tidsskridt, dvs. ved integration af desired rate.
@@ -206,6 +206,7 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw_smooth(floa
     // * Attitude target body-frame angular velocity: [p,q,r]'
     // Her sendes attutide target givet i euler vinkler og euler vinkelhastigheder videre til en
     // attitude controller. Bemærk at dette ikke er en rate controller.
+    // _att_target_euler_rad bruges til feedforward.
     attitude_controller_run_euler(_att_target_euler_rad, _att_target_ang_vel_rads);
 }
 
@@ -398,13 +399,13 @@ void AC_AttitudeControl::attitude_controller_run_euler(const Vector3f& att_targe
 void AC_AttitudeControl::attitude_controller_run_quat(const Quaternion& att_target_quat, const Vector3f& att_target_ang_vel_rads)
 {
     // Update euler attitude target and angular velocity target
-    // Rb2n_target := att_target_quat.
+    // Rb2n_target := att_target_quat(k+1).
     att_target_quat.to_euler(_att_target_euler_rad.x,_att_target_euler_rad.y,_att_target_euler_rad.z);
     _att_target_ang_vel_rads = att_target_ang_vel_rads; // [p,q,r] givet direkte fra brugerens referencesignal
 
     // Retrieve quaternion vehicle attitude
     // TODO add _ahrs.get_quaternion()
-    // Rb2n := att_vehicle_quat
+    // Rb2n := att_vehicle_quat(k)
     Quaternion att_vehicle_quat;
     att_vehicle_quat.from_rotation_matrix(_ahrs.get_rotation_body_to_ned());
 
@@ -439,6 +440,7 @@ void AC_AttitudeControl::attitude_controller_run_quat(const Quaternion& att_targ
     _ang_vel_target_rads += Trv * _att_target_ang_vel_rads; // _att står for attitude bidraget
     // Idet "_ang_vel_target_rads" bliver anvendt af BODY-frame controller, må vinkelhastigheden
     // være defineret i BODY / vehicle frame.
+    // Note that Trv does not change the _att_target_ang_vel_rads when the roll and pitch are stabilized.
 }
 
 void AC_AttitudeControl::rate_controller_run()
@@ -685,9 +687,15 @@ void AC_AttitudeControl::accel_limiting(bool enable_limits)
 void AC_AttitudeControl::set_throttle_out(float throttle_in, bool apply_angle_boost, float filter_cutoff)
 {
     _throttle_in = throttle_in;
-    _throttle_in_filt.apply(throttle_in, _dt);
+    _throttle_in_filt.apply(throttle_in, _dt);  // filter is applied, by the returned value is not captured
     _motors.set_throttle_filter_cutoff(filter_cutoff);
+    // For z-position control, angle boost is activated (true).
     if (apply_angle_boost) {
+        // Given perfect roll/pitch stabilization, get_boosted_throttle(throttle_in) == throttle_in,
+        // i.e. get_boosted_throttle just passes the input on.
+        // set_throttle sets the internal variable _throttle_in which is being used by
+        //
+        // set_throttle(val) where val is meant to be in range 0 ~ 1
         _motors.set_throttle(get_boosted_throttle(throttle_in));
     }else{
         _motors.set_throttle(throttle_in);
@@ -709,6 +717,7 @@ void AC_AttitudeControl::set_throttle_out_unstabilized(float throttle_in, bool r
     _angle_boost = 0.0f;
 }
 
+// Proportional controller with piecewise sqrt sections to constrain second derivative
 float AC_AttitudeControl::sqrt_controller(float error, float p, float second_ord_lim)
 {
     if (second_ord_lim < 0.0f || is_zero(second_ord_lim) || is_zero(p)) {

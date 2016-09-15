@@ -97,7 +97,7 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
 	SCHED_TASK(read_rangefinder,      20,    100),
 	SCHED_TASK(update_altitude,       10,    100),
     SCHED_TASK(run_nav_updates,       50,    100),
-    SCHED_TASK(update_thr_average,   100,     90),
+    SCHED_TASK(update_thr_average,   100,     90),  // this updates the throttle hover level
     SCHED_TASK(three_hz_loop,          3,     75),
 	SCHED_TASK(update_turn_counter,   10,     50),
     SCHED_TASK(compass_accumulate,   100,    100),
@@ -146,7 +146,7 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
 #ifdef USERHOOK_SUPERSLOWLOOP
     SCHED_TASK(userhook_SuperSlowLoop, 1,   75),
 #endif
-    //SCHED_TASK(baldurLoop, 10,   110)
+    SCHED_TASK(baldurLoop, 0.5,   200)
 };
 
 /*
@@ -161,7 +161,7 @@ int timeSec = 0;
 float unit_step_input = 0.0;
 void Sub::baldurLoop()
 {
-    gcs_send_text_fmt(MAV_SEVERITY_INFO, "t = %d sec.",timeSec);
+/*    gcs_send_text_fmt(MAV_SEVERITY_INFO, "t = %d sec.",timeSec);
 
     // Apply step input
     if ( timeSec++ >= 5 )
@@ -172,12 +172,135 @@ void Sub::baldurLoop()
 
     _baldurs_pid.set_input_filter_all(unit_step_input);
     float proportional_output = _baldurs_pid.get_p();
-    float integrator_output = _baldurs_pid.get_i();
+    float integrator_output = _baldurs_pid.get_i();*/
 /*    gcs_send_text_fmt(MAV_SEVERITY_INFO, "p: %0.5f",proportional_output);
     gcs_send_text_fmt(MAV_SEVERITY_INFO, "i: %0.5f",integrator_output);
     gcs_send_text_fmt(MAV_SEVERITY_INFO, "acro_yaw_p: %f",g.acro_yaw_p);*/
-    gcs_send_text_fmt(MAV_SEVERITY_INFO, "yaw_max_radss: %f",AC_ATTITUDE_CONTROL_ACCEL_Y_MAX_DEFAULT_CDSS);
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "yaw_max_radss: %f",AC_ATTITUDE_CONTROL_ACCEL_Y_MAX_DEFAULT_CDSS);
 
+    // ===========================
+    // Depth Controller Parameters
+
+    // ===========================
+
+    // ===========================
+    // Depth Controller Parameters
+
+    // Position Kp gain
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "g.p_alt_hold.kP() = %f",g.p_alt_hold.kP());
+
+    // Velocity Kp gain
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_p_vel_z.kP() = %f",pos_control._p_vel_z.kP());
+
+    // Acceleration PID gains
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_pid_accel_z.kP() = %f",pos_control._pid_accel_z.kP());
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_pid_accel_z.kI() = %f",pos_control._pid_accel_z.kI());
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "_pid_accel_z.kD() = %f",pos_control._pid_accel_z.kD());
+    
+    // ---
+    
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "ALT_HOLD_P = %f",(float)ALT_HOLD_P); // = 1.0
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "VEL_Z_P = %f",(float)VEL_Z_P);       // = 5.0
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "ACCEL_Z_P = %f",(float)ACCEL_Z_P);   // = 0.5
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "ACCEL_Z_I = %f",(float)ACCEL_Z_I);   // = 1.0
+    //gcs_send_text_fmt(MAV_SEVERITY_INFO, "ACCEL_Z_D = %f",(float)ACCEL_Z_D);   // = 0.0
+    
+    // ---
+    
+    #define PRINT_SENSOR_STATUS 0
+    if (PRINT_SENSOR_STATUS)
+    {
+        // Attitude PID parameters
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "rangefinder_alt_ok() = %d",rangefinder_alt_ok());  // 0
+    }
+
+    // ===========================
+
+    #define PRINT_ALTITUDE_PARAMS 0
+    if (PRINT_ALTITUDE_PARAMS)
+    {
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"Altitude (depth):");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Accel. kP = %f",(float)(g.pid_accel_z.kP())); // 1.0
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Accel. kI = %f",(float)(g.pid_accel_z.kI())); // 3.0
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Accel. kD = %f",(float)(g.pid_accel_z.kD())); // 0.0
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Accel. Imax = %f",(float)(g.pid_accel_z.imax()));   
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Pos. kP = %f",(float)(g.p_alt_hold.kP()));    // 3.0
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Vel. kP = %f",(float)(g.p_vel_z.kP()));       // 8.0
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"Max/min limits:");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_throttle_hover = %f",(float)(pos_control._throttle_hover));      //    0.5: estimated throttle required to maintain a level hover
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_down_cms = %f",(float)(pos_control._speed_down_cms));      // -150.0: max descent rate in cm/s
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_up_cms = %f",(float)(pos_control._speed_up_cms));          //  250.0: max climb rate in cm/s 
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_cms = %f",(float)(pos_control._speed_cms));                //  500.0: max horizontal speed in cm/s
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_z_cms = %f",(float)(pos_control._accel_z_cms));            //  250.0: max vertical acceleration in cm/s/s
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_last_z_cms = %f",(float)(pos_control._accel_last_z_cms));  //    0.0: max vertical acceleration in cm/s/s
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_cms = %f",(float)(pos_control._accel_cms));                //  100.0: max horizontal acceleration in cm/s/s
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_jerk_cmsss = %f",(float)(pos_control._jerk_cmsss));              // 1700.0: max horizontal jerk in cm/s/s/s         
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_alt_max = %f",(float)(pos_control._alt_max));              // 1700.0: max horizontal jerk in cm/s/s/s         
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_alt_min = %f",(float)(pos_control._alt_min));              // 1700.0: max horizontal jerk in cm/s/s/s         
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_error_filter = %f",(float)(pos_control._vel_error_filter.get_cutoff_freq())); // 4.0
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "POSCONTROL_THROTTLE_CUTOFF_FREQ = %f",(float)(POSCONTROL_THROTTLE_CUTOFF_FREQ)); // 2.0
+        
+        
+    }
+
+    #define PRINT_POSZ_VEL_CONTROL 0
+    if (PRINT_POSZ_VEL_CONTROL)
+    {
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_flags.freeze_ff_z = %d",pos_control._flags.freeze_ff_z); // 1 før controlleren startes, men 0 efter.
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_feedforward.z = %f",(float)(pos_control._accel_feedforward.z)); // acceleration feedforward nonzero under kørsel
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_flags.use_desvel_ff_z = %d",pos_control._flags.use_desvel_ff_z);
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_p_pos_z.kP() = %f",(float)(pos_control._p_pos_z.kP()));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_p_vel_z.kP() = %f",(float)(pos_control._p_vel_z.kP()));
+        
+    }
+
+    
+    #define PRINT_THROTTLE 0
+    if (PRINT_THROTTLE)
+    {
+        attitude_control.set_throttle_out(1, true, 4);
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "get_throttle_bidirectional = %f",(float)(motors.get_throttle_bidirectional())); 
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_throttle_in = %f",(float)(motors._throttle_in)); 
+
+    }
+
+    #define PRINT_ALTITUDE_SIGNALS 0
+    if (PRINT_ALTITUDE_SIGNALS)
+    {
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"Altitude signals");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_desired = %f",(float)(pos_control._vel_desired.z)); 
+    }
+
+    // ===========================
+    
+    #define PRINT_ATTITUDE_PARAMS 0
+    if (PRINT_ATTITUDE_PARAMS)
+    {
+        // Attitude PID parameters
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"Yaw Attitude");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Kp = %f",(float)(attitude_control._p_angle_yaw.kP()));  // 0.0 (feedforward disabled)
+    }
+    
+    // ===========================
+
+    #define PRINT_YAW_RATE_PARAMS 0
+    if (PRINT_YAW_RATE_PARAMS)
+    {
+        // Yaw rate controllers
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"Yaw Rate:");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "kP = %f",(float)(attitude_control.get_rate_yaw_pid().kP()));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "kI = %f",(float)(attitude_control.get_rate_yaw_pid().kI()));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "kD = %f",(float)(attitude_control.get_rate_yaw_pid().kD()));
+    }
+    
 }
 
 void Sub::setup()

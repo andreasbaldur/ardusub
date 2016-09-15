@@ -2,6 +2,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AC_PosControl.h"
 #include <AP_Math/AP_Math.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 extern const AP_HAL::HAL& hal;
 
@@ -201,35 +202,95 @@ void AC_PosControl::set_alt_target_from_climb_rate(float climb_rate_cms, float d
 ///     set force_descend to true during landing to allow target to move low enough to slow the motors
 void AC_PosControl::set_alt_target_from_climb_rate_ff(float climb_rate_cms, float dt, bool force_descend)
 {
+    // ------------------------------------
+    // RC-Override   |   target_climb_rate
+    //      1100     |          -50
+    //      1900     |          +50
+    // -------------------------------------
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "climb_rate_cms = %f",(float)climb_rate_cms);
+
+    // ------------------------------------
+    //                _accel_z_cms |  50.0
+    //             _speed_down_cms | -50.0
+    //               _speed_up_cms | +50.0
+    // POSCONTROL_OVERSPEED_GAIN_Z |   2.0
+    //       POSCONTROL_JERK_RATIO |   1.0
+    // -------------------------------------
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_z_cms = %f",(float)_accel_z_cms);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_down_cms = %f",(float)_speed_down_cms);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_up_cms = %f",(float)_speed_up_cms);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "POSCONTROL_OVERSPEED_GAIN_Z = %f",(float)POSCONTROL_OVERSPEED_GAIN_Z);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "POSCONTROL_JERK_RATIO = %f",(float)POSCONTROL_JERK_RATIO);
+
+    // =======================================================
+    // This code is not relevant since _vel_desired.z will not
+    // exceed the "_speed_down_cms" or "_speed_up_cms" limits.
+
     // calculated increased maximum acceleration if over speed
-    float accel_z_cms = _accel_z_cms;
+    float accel_z_cms = _accel_z_cms;   // 50.0
     if (_vel_desired.z < _speed_down_cms && !is_zero(_speed_down_cms)) {
         accel_z_cms *= POSCONTROL_OVERSPEED_GAIN_Z * _vel_desired.z / _speed_down_cms;
     }
     if (_vel_desired.z > _speed_up_cms && !is_zero(_speed_up_cms)) {
         accel_z_cms *= POSCONTROL_OVERSPEED_GAIN_Z * _vel_desired.z / _speed_up_cms;
     }
+    // =======================================================
+
+    // accel_z_cms := 50.0 cm/s/s (constant!)
     accel_z_cms = constrain_float(accel_z_cms, 0.0f, 750.0f);
-
+    
     // jerk_z is calculated to reach full acceleration in 1000ms.
-    float jerk_z = accel_z_cms * POSCONTROL_JERK_RATIO;
+    // small calculation: a(t) = jmax * t + a0
+    // given a0 = 0, then t = amax / jmax = (50 cm/s/s) / (50 cm/s/s/s) = 1 sec = 1000 msec 
+    float jerk_z = accel_z_cms * POSCONTROL_JERK_RATIO; // = 50.0 * 1 = 50.0 (constant)
+    
+    // --------------------------
+    //      jerk_z | 50.0 (const)
+    // accel_z_cms | 50.0 (const)
+    // --------------------------
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "jerk_z = %f",(float)jerk_z);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "accel_z_cms = %f",(float)accel_z_cms);
 
-    float accel_z_max = MIN(accel_z_cms, safe_sqrt(2.0f*fabsf(_vel_desired.z - climb_rate_cms)*jerk_z));
+    // accel_z_cms: can be seen as the absolute maximal allowed acceleration (saturation)
+    //      jerk_z: specified how fast the acceleration is allowed to change.
+    // accel_z_max: is the current maximum acceleration.
+    // The MIN(.,.) operation ensures that acceleration is saturated at some constant value.
+    float accel_z_max = MIN(accel_z_cms, safe_sqrt(2.0f*fabsf(_vel_desired.z - climb_rate_cms)*jerk_z));    // the acceleration bound
+    // --------------------------------------------------------------
+    // accel_z_max | changes from 0 to 50 instantly, and then drops down to 0 linearly
+    // --------------------------------------------------------------
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "accel_z_max = %f",(float)accel_z_max);
 
-    _accel_last_z_cms += jerk_z * dt;
-    _accel_last_z_cms = MIN(accel_z_max, _accel_last_z_cms);
+    // Here the actual acceleration is computed
+    _accel_last_z_cms += jerk_z * dt;   // a(k) = a(k-1) + j*dt
+    _accel_last_z_cms = MIN(accel_z_max, _accel_last_z_cms);    // This is limited to
 
     float vel_change_limit = _accel_last_z_cms * dt;
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "vel_change_limit = %f",(float)vel_change_limit);
+
+    // Desired velocity is set:
+    // vdes(k) := _vel_desired.z
     _vel_desired.z = constrain_float(climb_rate_cms, _vel_desired.z-vel_change_limit, _vel_desired.z+vel_change_limit);
+
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_desired.z = %f",(float)_vel_desired.z);
+
+    // Specify that we want to use desired velocity feedforward.
+    // The only place when this is set to false, is in the "relax_alt_hold_controllers" which is called when the ROV hits the bottom or the surface.
     _flags.use_desvel_ff_z = true;
 
     // adjust desired alt if motors have not hit their limits
     // To-Do: add check of _limit.pos_down?
+    // Feedforward position target is set by Euler integration of desired velocity
+    // ptar(k) := ptar(k-1) + vdes(k)*dt
+    // Note: The if statement is used to check that the thrusters are not in a limit.
     if ((_vel_desired.z<0 && (!_motors.limit.throttle_lower || force_descend)) || (_vel_desired.z>0 && !_motors.limit.throttle_upper && !_limit.pos_up)) {
         _pos_target.z += _vel_desired.z * dt;
     }
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduSub)
+    // ============================================
+    // ArduSub relevant part of code:
+    
     // do not let target alt get above limit
     if (_alt_max < 0 && _alt_max > _alt_min && _pos_target.z > _alt_max) {
         _pos_target.z = _alt_max;
@@ -245,6 +306,7 @@ void AC_PosControl::set_alt_target_from_climb_rate_ff(float climb_rate_cms, floa
         // decelerate feed forward to zero
         _vel_desired.z = constrain_float(0.0f, _vel_desired.z-vel_change_limit, _vel_desired.z+vel_change_limit);
     }
+    // ============================================
 #else
     // do not let target alt get above limit
     if (_alt_max > 0 && _pos_target.z > _alt_max) {
@@ -265,6 +327,7 @@ void AC_PosControl::add_takeoff_climb_rate(float climb_rate_cms, float dt)
 }
 
 /// relax_alt_hold_controllers - set all desired and targets to measured
+// This deactivates the controller!
 void AC_PosControl::relax_alt_hold_controllers(float throttle_setting)
 {
     _pos_target.z = _inav.get_altitude();
@@ -382,8 +445,14 @@ void AC_PosControl::calc_leash_length_z()
 // vel_up_max, vel_down_max should have already been set before calling this method
 void AC_PosControl::pos_to_rate_z()
 {
-    float curr_alt = _inav.get_altitude();
+    //Sub::gcs_send_text(MAV_SEVERITY_INFO,"---");
 
+    // dybdemåling til tiden k
+    float curr_alt = _inav.get_altitude(); // p(k) := curr_alt (cm)
+    
+    //float curr_alt = 5.0;
+    //_pos_target.z = 0.0;
+    
     // clear position limit flags
     _limit.pos_up = false;
     _limit.pos_down = false;
@@ -403,8 +472,16 @@ void AC_PosControl::pos_to_rate_z()
         _limit.pos_down = true;
     }
 
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_pos_error.z = %f",(float)_pos_error.z);
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_p_pos_z.kP() = %f",(float)_p_pos_z.kP()); //  3.0
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_z_cms = %f",(float)_accel_z_cms);   // 50.0
+
+    // Kp = 3.0 for depth position control
     // calculate _vel_target.z using from _pos_error.z using sqrt controller
+    // sqrt-section will be entered if x > 50/3² = 5.5556
     _vel_target.z = AC_AttitudeControl::sqrt_controller(_pos_error.z, _p_pos_z.kP(), _accel_z_cms);
+
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_target.z = %f",(float)_vel_target.z);
 
     // check speed limits
     // To-Do: check these speed limits here or in the pos->rate controller
@@ -419,10 +496,16 @@ void AC_PosControl::pos_to_rate_z()
         _limit.vel_up = true;
     }
 
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_down_cms = %f",(float)_speed_down_cms);   // -50.0
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_speed_up_cms = %f",(float)_speed_up_cms);       // +50.0
+    
     // add feed forward component
-    if (_flags.use_desvel_ff_z) {
+    if (_flags.use_desvel_ff_z) {   // this is activated unless the ROV hits the bottom
         _vel_target.z += _vel_desired.z;
     }
+
+    // Feedforward component is added
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_target.z = %f",(float)_vel_target.z);
 
     // call rate based throttle controller which will update accel based throttle controller targets
     rate_to_accel_z();
@@ -432,8 +515,13 @@ void AC_PosControl::pos_to_rate_z()
 // calculates desired acceleration and calls accel throttle controller
 void AC_PosControl::rate_to_accel_z()
 {
-    const Vector3f& curr_vel = _inav.get_velocity();
+    const Vector3f& curr_vel = _inav.get_velocity();    // cm/s
+    //Vector3f curr_vel;    // cm/s
     float p;                                // used to capture pid values for logging
+
+    //curr_vel.z = 1.0;
+    //_vel_target.z = 2.0;
+
 
     // reset last velocity target to current target
     if (_flags.reset_rate_to_accel_z) {
@@ -443,7 +531,7 @@ void AC_PosControl::rate_to_accel_z()
     // feed forward desired acceleration calculation
     if (_dt > 0.0f) {
     	if (!_flags.freeze_ff_z) {
-    		_accel_feedforward.z = (_vel_target.z - _vel_last.z)/_dt;
+    		_accel_feedforward.z = (_vel_target.z - _vel_last.z)/_dt; // _vel_last.z(k) := _vel_target.z(k-1)
         } else {
     		// stop the feed forward being calculated during a known discontinuity
     		_flags.freeze_ff_z = false;
@@ -469,8 +557,12 @@ void AC_PosControl::rate_to_accel_z()
     // calculate p
     p = _p_vel_z.kP() * _vel_error.z;
 
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "p = %f",(float)p);
+
     // consolidate and constrain target acceleration
     _accel_target.z = _accel_feedforward.z + p;
+
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_accel_feedforward.z = %f",(float)_accel_feedforward.z);
 
     // set target for accel based throttle controller
     accel_to_throttle(_accel_target.z);
@@ -484,7 +576,13 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     float p,i,d;              // used to capture pid values for logging
 
     // Calculate Earth Frame Z acceleration
+    // The *100.0f multiplication is to go from m/s/s to cm/s/s
     z_accel_meas = -(_ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f;
+
+    // Andreas: these two were set to 0 under Furesø experiments!
+    // This means that (p+i+d) = 0, and the only input was _throttle_hover
+    // z_accel_meas = 0.0;
+    // _accel_target.z = 0.0;   // this doesn't change anything(!!!) since _accel_target.z is sent as a function parameter in accel_target_z
 
     // reset target altitude if this controller has just been engaged
     if (_flags.reset_accel_to_throttle) {
@@ -497,7 +595,8 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     }
 
     // set input to PID
-    _pid_accel_z.set_input_filter_d(_accel_error.z);
+    // D-gain er sat til 0!
+    _pid_accel_z.set_input_filter_d(_accel_error.z);    // only input to the D portion of the controller is filtered
     _pid_accel_z.set_desired_rate(accel_target_z);
 
     // separately calculate p, i, d values for logging
@@ -515,9 +614,16 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     // get d term
     d = _pid_accel_z.get_d();
 
-    float thr_out = (p+i+d)/1000.0f +_throttle_hover;
+    //_throttle_hover is the amount of throttle needed for hovering (fighting gravity)
+    // this is updated in a separate task
+    float thr_out = (p+i+d)/1000.0f +_throttle_hover;   
+
+    // The _throttle_hover variable is being adjusted during flight by a separate task called
+    // update_thr_average which is run at 100 Hz.
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO, "_throttle_hover = %f",(float)_throttle_hover);
 
     // send throttle to attitude controller with angle boost
+    // This is where the final throttle value is sent to the thrusters
     _attitude_control.set_throttle_out(thr_out, true, POSCONTROL_THROTTLE_CUTOFF_FREQ);
 }
 
