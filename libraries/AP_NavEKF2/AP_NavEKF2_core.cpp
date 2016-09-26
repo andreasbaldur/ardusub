@@ -8,7 +8,7 @@
 #include "AP_NavEKF2_core.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Vehicle/AP_Vehicle.h>
-
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 #include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
@@ -409,6 +409,9 @@ void NavEKF2_core::CovarianceInit()
 // Update Filter States - this should be called whenever new IMU data is available
 void NavEKF2_core::UpdateFilter(bool predict)
 {
+    // This is called at 400 Hz and updates the primary AHRS, namely the ATTITUDE.
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2_core::UpdateFilter");
+
     // Set the flag to indicate to the filter that the front-end has given permission for a new state prediction cycle to be started
     startPredictEnabled = predict;
 

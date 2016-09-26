@@ -55,8 +55,15 @@ public:
 
         // these are experimentally derived from the simulator
         // with large drift levels
-        _ki = 0.0087f;
+        
+        // === Andreas ===
+        // Original gains
+        _ki = 0.0087f;  
         _ki_yaw = 0.01f;
+        // Modified gains
+        //_ki = 0.0087f;  
+        //_ki_yaw = 0.5f;
+        // ================
     }
 
     // return the smoothed gyro vector corrected for drift

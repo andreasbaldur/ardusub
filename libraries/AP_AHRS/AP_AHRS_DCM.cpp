@@ -110,19 +110,28 @@ AP_AHRS_DCM::matrix_update(float _G_Dt)
     for (uint8_t i=0; i<_ins.get_gyro_count(); i++) {
         if (_ins.get_gyro_health(i) && healthy_count < 2) {
             Vector3f dangle;
-            if (_ins.get_delta_angle(i, dangle)) {
-                healthy_count++;
-                delta_angle += dangle;
+            if (_ins.get_delta_angle(i, dangle)) { // read the angle difference
+                healthy_count++;                   // keep count of the number of sensors used.
+                delta_angle += dangle;             // notice that delta_angle is a 3x1 vector
+                // delta_angle = raw gyro measurement times sample time just like stated in Eqn. 17
             }
         }
     }
     if (healthy_count > 1) {
-        delta_angle /= healthy_count;
+        delta_angle /= healthy_count;   // simply take average of all sensor readings
     }
+
+
+
+    // Andreas:
+    // This is the place where the estimated adjustment is used!
     if (_G_Dt > 0) {
-        _omega = delta_angle / _G_Dt;
-        _omega += _omega_I;
-        _dcm_matrix.rotate((_omega + _omega_P + _omega_yaw_P) * _G_Dt);
+
+        _omega = delta_angle / _G_Dt;   // _omega := raw angular rate (with bias)
+        _omega += _omega_I;             // _omega_I := long term (bias) correction
+        _dcm_matrix.rotate((_omega + _omega_P + _omega_yaw_P) * _G_Dt); 
+
+        // _dcm_matrix := the resulting estimated orientation
     }
 }
 
@@ -281,12 +290,12 @@ AP_AHRS_DCM::normalize(void)
     float error;
     Vector3f t0, t1, t2;
 
-    error = _dcm_matrix.a * _dcm_matrix.b;                                              // eq.18
+    error = _dcm_matrix.a * _dcm_matrix.b;                              // eq.18 (dot product between axes)
 
     t0 = _dcm_matrix.a - (_dcm_matrix.b * (0.5f * error));              // eq.19
     t1 = _dcm_matrix.b - (_dcm_matrix.a * (0.5f * error));              // eq.19
     t2 = t0 % t1;                                                       // c= a x b // eq.20
-
+    // Andreas: Note that % means cross product! (operator overload)
     if (!renorm(t0, _dcm_matrix.a) ||
             !renorm(t1, _dcm_matrix.b) ||
             !renorm(t2, _dcm_matrix.c)) {
@@ -431,6 +440,7 @@ AP_AHRS_DCM::drift_correction_yaw(void)
     float yaw_error;
     float yaw_deltat;
 
+    // Yes, we are using compass!
     if (AP_AHRS_DCM::use_compass()) {
         /*
           we are using compass for yaw
@@ -442,9 +452,9 @@ AP_AHRS_DCM::drift_correction_yaw(void)
             // here. This has the effect of throwing away
             // the first compass value, which can be bad
             if (!_flags.have_initial_yaw && _compass->read()) {
-                float heading = _compass->calculate_heading(_dcm_matrix);
+                float heading = _compass->calculate_heading(_dcm_matrix);   // Andreas: heading computed as Fossen does. The _dcm_matrix is used for roll/pitch tilt compensation of the magnetic field.
                 _dcm_matrix.from_euler(roll, pitch, heading);
-                _omega_yaw_P.zero();
+                _omega_yaw_P.zero();    // clear the proportional contribution
                 _flags.have_initial_yaw = true;
             }
             new_value = true;
@@ -455,6 +465,7 @@ AP_AHRS_DCM::drift_correction_yaw(void)
             // don't suddenly change yaw with a reset
             _gps_last_update = _gps.last_fix_time_ms();
         }
+        // ANDREAS: WE DONT HAVE GPS
     } else if (_flags.fly_forward && have_gps()) {
         /*
           we are using GPS for yaw
@@ -574,11 +585,15 @@ AP_AHRS_DCM::drift_correction(float deltat)
 
     // perform yaw drift correction if we have a new yaw reference
     // vector
+    // yaw reference vector := measurement from magnetometer
     drift_correction_yaw();
 
+    // === Andreas: Everything under here is accelerometer compensation
+    // Notice that the implementation makes use of the several accelerometers that are available.
     // rotate accelerometer values into the earth frame
     for (uint8_t i=0; i<_ins.get_accel_count(); i++) {
         if (_ins.get_accel_health(i)) {
+            // delta_velocity := integration of raw accelerometer measurement
             /*
               by using get_delta_velocity() instead of get_accel() the
               accel value is sampled over the right time delta for
@@ -596,6 +611,7 @@ AP_AHRS_DCM::drift_correction(float deltat)
         }
     }
 
+    // Andreas: _accel_ef_blended refers to the weighted average of two accelerometer measurements
     //update _accel_ef_blended
     if (_ins.get_accel_count() == 2 && _ins.use_accel(0) && _ins.use_accel(1)) {
         float imu1_weight_target = _active_accel_instance == 0 ? 1.0f : 0.0f;
@@ -610,6 +626,8 @@ AP_AHRS_DCM::drift_correction(float deltat)
     // we have integrated over
     _ra_deltat += deltat;
 
+    // =======================================================================
+    // Andreas: FORGET THIS CODE since we don't use GPS or airspeed estimation
     if (!have_gps() ||
             _gps.status() < AP_GPS::GPS_OK_FIX_3D ||
             _gps.num_sats() < _gps_minsats) {
@@ -674,6 +692,7 @@ AP_AHRS_DCM::drift_correction(float deltat)
         _position_offset_north += velocity.x * _ra_deltat;
         _position_offset_east  += velocity.y * _ra_deltat;
     }
+    // =======================================================================
 
     // see if this is our first time through - in which case we
     // just setup the start times and return
@@ -860,7 +879,7 @@ AP_AHRS_DCM::drift_correction(float deltat)
         _omega_I_sum.y = constrain_float(_omega_I_sum.y, -change_limit, change_limit);
         _omega_I_sum.z = constrain_float(_omega_I_sum.z, -change_limit, change_limit);
         _omega_I += _omega_I_sum;
-        _omega_I_sum.zero();
+        _omega_I_sum.zero();    // prepare for next correction
         _omega_I_sum_time = 0;
     }
 

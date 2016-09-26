@@ -8,6 +8,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #include <stdio.h>
 

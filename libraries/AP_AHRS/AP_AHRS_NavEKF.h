@@ -224,8 +224,9 @@ public:
 
     // is the EKF backend doing its own sensor logging?
     bool have_ekf_logging(void) const override;
-    
-private:
+
+// Andreas: Changed to public in order to get access to active_EKF_type()
+//private:
     enum EKF_TYPE {EKF_TYPE_NONE=0,
 #if AP_AHRS_WITH_EKF1
                    EKF_TYPE1=1,

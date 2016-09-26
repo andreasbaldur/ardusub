@@ -116,6 +116,9 @@ void Sub::update_thr_average()
     float throttle = motors.get_throttle();
 
     // calc average throttle if we are in a level hover
+    // labs == long abs
+    // REMARK: The throttle will be updated while doing heave experiments.
+    // The updating function has a time constant of 1 second and a gain of 1.
     if (throttle > 0.0f && abs(climb_rate) < 60 && labs(ahrs.roll_sensor) < 500 && labs(ahrs.pitch_sensor) < 500) {
         throttle_average = throttle_average * 0.99f + throttle * 0.01f;
         // update position controller

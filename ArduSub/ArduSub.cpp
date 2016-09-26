@@ -300,6 +300,22 @@ void Sub::baldurLoop()
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "kI = %f",(float)(attitude_control.get_rate_yaw_pid().kI()));
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "kD = %f",(float)(attitude_control.get_rate_yaw_pid().kD()));
     }
+
+    // ===========================
+
+    #define PRINT_AHRS_PARAMS 0
+    if (PRINT_AHRS_PARAMS)
+    {
+        // Yaw rate controllers
+        gcs_send_text(MAV_SEVERITY_INFO,"---");
+        gcs_send_text(MAV_SEVERITY_INFO,"AHRS:");
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "ahrs._kp_yaw = %f",(float)(ahrs._kp_yaw));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "ahrs.get_gyro_drift() = %f",(float)(ahrs.get_gyro_drift().z));
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "AP_AHRS_WITH_EKF1 = %d",AP_AHRS_WITH_EKF1);
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "active_EKF_type() = %d",(int)(ahrs.active_EKF_type()));   // = 2, enum EKF_TYPE {..., EKF_TYPE2=2, ...}
+    }
+
+    
     
 }
 

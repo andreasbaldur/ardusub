@@ -7,6 +7,7 @@
 #include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS.h>
 #include <DataFlash/DataFlash.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 /*
   parameter defaults for different types of vehicle. The
@@ -575,6 +576,9 @@ bool NavEKF2::InitialiseFilter(void)
 // Update Filter States - this should be called whenever new IMU data is available
 void NavEKF2::UpdateFilter(void)
 {
+    // is run at 400 Hz
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2::UpdateFilter");
+
     if (!core) {
         return;
     }

@@ -103,6 +103,7 @@ void Sub::init_compass()
         Log_Write_Error(ERROR_SUBSYSTEM_COMPASS,ERROR_CODE_FAILED_TO_INITIALISE);
         return;
     }
+    // Andreas: This is where the compass used for DCM is indicated!
     ahrs.set_compass(&compass);
 }
 

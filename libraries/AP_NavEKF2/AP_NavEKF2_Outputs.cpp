@@ -8,6 +8,7 @@
 #include "AP_NavEKF2_core.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Vehicle/AP_Vehicle.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #include <stdio.h>
 
@@ -386,6 +387,9 @@ void  NavEKF2_core::getInnovations(Vector3f &velInnov, Vector3f &posInnov, Vecto
 // also return the delta in position due to the last position reset
 void  NavEKF2_core::getVariances(float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset) const
 {
+    // Sent only once QGC is started...
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2_core::getVariances");
+
     velVar   = sqrtf(velTestRatio);
     posVar   = sqrtf(posTestRatio);
     hgtVar   = sqrtf(hgtTestRatio);
@@ -505,6 +509,9 @@ void  NavEKF2_core::getFilterGpsStatus(nav_gps_status &faults) const
 // send an EKF_STATUS message to GCS
 void NavEKF2_core::send_status_report(mavlink_channel_t chan)
 {
+    // Sent only once QGC is started...
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2_core::send_status_report");
+
     // get filter status
     nav_filter_status filt_state;
     getFilterStatus(filt_state);

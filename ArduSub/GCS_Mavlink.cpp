@@ -825,14 +825,15 @@ GCS_MAVLINK_Sub::data_stream_send(void)
 
     // ANDREAS:
     // Commented out useless messages
-
+    // All the sensor values that we want at 50 Hz
     if (stream_trigger(STREAM_RAW_SENSORS)) {
         send_message(MSG_RAW_IMU1);
         send_message(MSG_RAW_IMU2);
         send_message(MSG_RAW_IMU3);
 
         // Added by Andreas
-        send_message(MSG_ATTITUDE);
+        send_message(MSG_ATTITUDE); // ATTITUDE
+        //send_message(MSG_SIMSTATE); // AHRS2
 
         // Added by Andreas
         send_message(MSG_LOCATION);
@@ -873,8 +874,8 @@ GCS_MAVLINK_Sub::data_stream_send(void)
     if (sub.gcs_out_of_time) return;
 
     if (stream_trigger(STREAM_EXTRA1)) {
-        send_message(MSG_ATTITUDE);
-        send_message(MSG_SIMSTATE);
+        send_message(MSG_ATTITUDE); // AHRS1 (primary)
+        send_message(MSG_SIMSTATE); // AHRS2 (secondary): Commenting this line means that AHRS2 will not be visible from QGC
         send_message(MSG_PID_TUNING);
     }
 
@@ -900,7 +901,7 @@ GCS_MAVLINK_Sub::data_stream_send(void)
         send_message(MSG_GIMBAL_REPORT);
         send_message(MSG_MAG_CAL_REPORT);
         send_message(MSG_MAG_CAL_PROGRESS);
-        send_message(MSG_EKF_STATUS_REPORT);
+        send_message(MSG_EKF_STATUS_REPORT);    // Andreas: This MSG is interesting when it comes to the yaw drift.
         send_message(MSG_VIBRATION);
         send_message(MSG_RPM);
     }

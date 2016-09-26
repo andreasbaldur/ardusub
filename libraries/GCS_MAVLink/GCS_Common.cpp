@@ -1258,7 +1258,7 @@ void GCS_MAVLINK::send_ahrs(AP_AHRS &ahrs)
     const Vector3f &omega_I = ahrs.get_gyro_drift();
     mavlink_msg_ahrs_send(
         chan,
-        omega_I.x,
+        omega_I.x,  // omega_I := long term drift (gyro bias)
         omega_I.y,
         omega_I.z,
         0,

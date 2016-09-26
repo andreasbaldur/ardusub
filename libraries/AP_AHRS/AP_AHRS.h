@@ -428,7 +428,8 @@ public:
         return _ekf_type;
     }
     
-protected:
+// Andreas: Changed to public in order to get access to _kp_yaw and _kp
+//protected:
     AHRS_VehicleClass _vehicle_class;
 
     // settable parameters

@@ -8,6 +8,7 @@
 #include "AP_NavEKF2_core.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Vehicle/AP_Vehicle.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #include <stdio.h>
 
@@ -725,6 +726,7 @@ void NavEKF2_core::fuseEulerYaw()
         predicted_yaw = euler321.z;
 
         // set the yaw to zero and calculate the zero yaw rotation from body to earth frame
+        // Andreas: Tbn = Transformation Body 2 NED
         Tbn_zeroYaw.from_euler(euler321.x, euler321.y, 0.0f);
 
     } else {
@@ -763,6 +765,15 @@ void NavEKF2_core::fuseEulerYaw()
 
         // set the yaw to zero and calculate the zero yaw rotation from body to earth frame
         Tbn_zeroYaw.from_euler312(euler312.x, euler312.y, 0.0f);
+
+/*        static int printCnt2 = 0;
+        if (++printCnt2 == 20)
+        {
+            //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"declination: %f",_ahrs->get_compass()->get_declination());    // = 0
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"measured_yaw: %f",measured_yaw);
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"innovYaw: %f",innovYaw);  
+            printCnt2 = 0;
+        }*/
     }
 
     // rotate measured mag components into earth frame
@@ -783,6 +794,19 @@ void NavEKF2_core::fuseEulerYaw()
 
     // Copy raw value to output variable used for data logging
     innovYaw = innovation;
+
+    static int printCnt = 0;
+    if (++printCnt == 20)
+    {
+        //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"declination: %f",_ahrs->get_compass()->get_declination());    // = 0
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"measured_yaw: %f",measured_yaw);
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"innovYaw: %f",innovYaw); 
+        // ---
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.x: %f",magDataDelayed.mag.x); 
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.y: %f",magDataDelayed.mag.y); 
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.z: %f",magDataDelayed.mag.z);
+        printCnt = 0;
+    }
 
     // Calculate innovation variance and Kalman gains, taking advantage of the fact that only the first 3 elements in H are non zero
     float PH[3];

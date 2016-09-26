@@ -23,6 +23,7 @@
 #include "AP_AHRS.h"
 #include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #if AP_AHRS_NAVEKF_AVAILABLE
 
@@ -76,41 +77,68 @@ void AP_AHRS_NavEKF::reset_gyro_drift(void)
     EKF2.resetGyroBias();
 }
 
+// Andreas: Både "update_DCM()" og "update_EKF2()" køres.
 void AP_AHRS_NavEKF::update(void)
 {
 #if !AP_AHRS_WITH_EKF1
     if (_ekf_type == 1) {
         _ekf_type.set(2);
+        //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"_ekf_type.set(2)");
     }
 #endif
-    update_DCM();
-#if AP_AHRS_WITH_EKF1
-    update_EKF1();
+    // ===
+    update_DCM();   // is run (this is the primary AHRS)
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"update_DCM()");
+    // ===
+#if AP_AHRS_WITH_EKF1 // == 0 (Andreas)
+    update_EKF1();  // not running
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"update_EKF1()");
 #endif
-    update_EKF2();
+    // ===
+    // commenting this out means that AHRS2 will not be available
+    // since EKF_TYPE2 is chosen, the update_EKF2() is overwriting the
+    // variables: roll/pitch/yaw which is sent in the MSG_ATTITUDE.
+    update_EKF2(); // is also run (this is the secondary AHRS)
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"update_EKF2()");
+    // ===
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    update_SITL();
+    update_SITL(); // not running
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"update_SITL()");
 #endif
 }
-
+// gcs_send_text_fmt(MAV_SEVERITY_INFO, "active_EKF_type() = %d",(int)(ahrs.active_EKF_type()));
 void AP_AHRS_NavEKF::update_DCM(void)
 {
     // we need to restore the old DCM attitude values as these are
     // used internally in DCM to calculate error values for gyro drift
     // correction
-    roll = _dcm_attitude.x;
+    roll = _dcm_attitude.x; // these are the old values roll(k-1),pitch(k-1),yaw(k-1)
     pitch = _dcm_attitude.y;
     yaw = _dcm_attitude.z;
     update_cd_values();
 
-    AP_AHRS_DCM::update();
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO," DCM: yaw = %0.3f",(float)yaw);
 
+    AP_AHRS_DCM::update();  // this ends with calling euler_angles() which in turn sets: roll, pitch, yaw
+
+    // the new values (after update)
+    // this is the "AHRS2".
+/*    static int printCnt = 0;
+    if (++printCnt == 10)   // print every 10
+    {
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO," DCM: yaw = %0.3f",(float)yaw);    
+        printCnt = 0;
+    }*/
+        
     // keep DCM attitude available for get_secondary_attitude()
-    _dcm_attitude(roll, pitch, yaw);
+    _dcm_attitude(roll, pitch, yaw);    // Vector3f with operator () overload
 }
 
+// Andreas: FORGET THIS; it is not run
 void AP_AHRS_NavEKF::update_EKF1(void)
 {
+    // not called as expected
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"update_EKF1");
 #if AP_AHRS_WITH_EKF1
     if (!ekf1_started) {
         // wait 1 second for DCM to output a valid tilt error estimate
@@ -184,7 +212,8 @@ void AP_AHRS_NavEKF::update_EKF1(void)
 #endif
 }
 
-
+// === Andreas ===
+// The AP_NavEKF2 is the class that is used; not AP_NavEKF!
 void AP_AHRS_NavEKF::update_EKF2(void)
 {
     if (!ekf2_started) {
@@ -200,15 +229,42 @@ void AP_AHRS_NavEKF::update_EKF2(void)
         }
     }
     if (ekf2_started) {
+        // === MAIN EKF FILTER CALL ==============
         EKF2.UpdateFilter();
-        if (active_EKF_type() == EKF_TYPE2) {
+        // =======================================
+        if (active_EKF_type() == EKF_TYPE2) {   // Andreas: THIS IS TRUE
+
+            // test if this yaw angle is the same as the one coming from the DCM
+            // this is indeed the case
+/*            static int printCnt = 0;
+            if (++printCnt == 10)
+            {
+                Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"EKF2: yaw = %0.3f (before)",(float)yaw);    
+                printCnt = 0;
+            }*/
+
             Vector3f eulers;
-            EKF2.getRotationBodyToNED(_dcm_matrix);
+            // The getRotationBodyToNED() overwrites the _dcm_matrix variable.
+            // In other words, the DCM estimate is NOT used in the EKF2!
+            // Therefore, it does not help to tune the DCM method, as this will
+            // only be seen in the AHRS2!
+            EKF2.getRotationBodyToNED(_dcm_matrix); 
             EKF2.getEulerAngles(-1,eulers);
+
+            // overwrite rpy with KF estimate
             roll  = eulers.x;
             pitch = eulers.y;
             yaw   = eulers.z;
 
+/*            static int printCnt = 0;
+            if (++printCnt == 10)
+            {
+                Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"EKF2: yaw = %0.3f (after update)",(float)yaw);    
+                printCnt = 0;
+            }*/
+
+            // is running at 400 Hz
+            //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"roll  = eulers.x;");
             update_cd_values();
             update_trig();
 
@@ -374,11 +430,15 @@ bool AP_AHRS_NavEKF::get_position(struct Location &loc) const
 // status reporting of estimated errors
 float AP_AHRS_NavEKF::get_error_rp(void) const
 {
+    // Sent only once QGC is started...
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"AP_AHRS_NavEKF::get_error_rp");
     return AP_AHRS_DCM::get_error_rp();
 }
 
 float AP_AHRS_NavEKF::get_error_yaw(void) const
 {
+    // Sent only once QGC is started...
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"AP_AHRS_NavEKF::get_error_yaw");
     return AP_AHRS_DCM::get_error_yaw();
 }
 
@@ -443,10 +503,12 @@ bool AP_AHRS_NavEKF::use_compass(void)
 // return secondary attitude solution if available, as eulers in radians
 bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers)
 {
+    // not called at all
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"get_secondary_attitude");
     switch (active_EKF_type()) {
     case EKF_TYPE_NONE:
         // EKF is secondary
-#if AP_AHRS_WITH_EKF1
+#if AP_AHRS_WITH_EKF1   // Andreas: AP_AHRS_WITH_EKF1 == 0
         EKF1.getEulerAngles(eulers);
         return ekf1_started;
 #else
@@ -457,9 +519,10 @@ bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers)
 #if AP_AHRS_WITH_EKF1
     case EKF_TYPE1:
 #endif
-    case EKF_TYPE2:
+    case EKF_TYPE2: // Dette er den valgte EKF type!
     default:
         // DCM is secondary
+        //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"eulers = _dcm_attitude");
         eulers = _dcm_attitude;
         return true;
     }
@@ -1119,6 +1182,8 @@ void AP_AHRS_NavEKF::send_ekf_status_report(mavlink_channel_t chan)
 
     case EKF_TYPE2:
     default:
+        // Sent only once QGC is started...
+        //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"AP_AHRS_NavEKF::send_ekf_status_report");
         return EKF2.send_status_report(chan);
     }    
 }
@@ -1212,6 +1277,8 @@ bool AP_AHRS_NavEKF::get_location(struct Location &loc) const
 // boolean false is returned if variances are not available
 bool AP_AHRS_NavEKF::get_variances(float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset) const
 {
+    // This isn't called at all!
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"AP_AHRS_NavEKF::get_variances");
     switch (ekf_type()) {
     case EKF_TYPE_NONE:
         // We are not using an EKF so no data
@@ -1226,6 +1293,7 @@ bool AP_AHRS_NavEKF::get_variances(float &velVar, float &posVar, float &hgtVar, 
 
     case EKF_TYPE2:
     default:
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"AP_AHRS_NavEKF::get_variances");
         // use EKF to get variance
         EKF2.getVariances(-1,velVar, posVar, hgtVar, magVar, tasVar, offset);
         return true;

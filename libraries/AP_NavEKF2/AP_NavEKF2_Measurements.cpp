@@ -7,6 +7,7 @@
 #include "AP_NavEKF2_core.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Vehicle/AP_Vehicle.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #include <stdio.h>
 
@@ -145,6 +146,9 @@ void NavEKF2_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
 // check for new magnetometer data and update store measurements if available
 void NavEKF2_core::readMagData()
 {
+    // Andreas: This is being called 
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2_core::readMagData");
+
     if (!_ahrs->get_compass()) {
         allMagSensorsFailed = true;
         return;        
@@ -234,6 +238,9 @@ void NavEKF2_core::readMagData()
  */
 void NavEKF2_core::readIMUData()
 {
+    // This is being called only once armed.
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF2_core::readIMUData");
+
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
     // average IMU sampling rate
@@ -259,6 +266,18 @@ void NavEKF2_core::readIMUData()
 
     // Get current time stamp
     imuDataNew.time_ms = imuSampleTime_ms;
+
+
+    // Andreas: Try to see the scaling
+/*    static int printCnt = 0;
+    if (++printCnt == 400)   // print every 10
+    {
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"scale_z: %f",(float)(stateStruct.gyro_scale.z));
+        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"bias_z: %f",(float)(stateStruct.gyro_bias.z));
+        printCnt = 0;
+    }*/
+    // Force a different scale
+    //stateStruct.gyro_scale.z = 0.70;
 
     // remove gyro scale factor errors
     imuDataNew.delAng.x = imuDataNew.delAng.x * stateStruct.gyro_scale.x;

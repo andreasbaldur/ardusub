@@ -6,6 +6,7 @@
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Param/AP_Param.h>
 #include <AP_Vehicle/AP_Vehicle.h>
+#include "../../ArduSub/Sub.h" // Allows: gcs_send_text
 
 #include <stdio.h>
 
@@ -364,6 +365,8 @@ bool NavEKF_core::InitialiseFilterBootstrap(void)
 // Update Filter States - this should be called whenever new IMU data is available
 void NavEKF_core::UpdateFilter()
 {
+    //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"NavEKF_core::UpdateFilter");
+
     // zero the delta quaternion used by the strapdown navigation because it is published
     // and we need to return a zero rotation of the INS fails to update it
     correctedDelAngQuat.initialise();
