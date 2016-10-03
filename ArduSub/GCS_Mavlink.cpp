@@ -1899,6 +1899,30 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
         result = MAV_RESULT_ACCEPTED;
         break;
 
+    // EMIL's GPS UPDATE
+    case MAVLINK_MSG_ID_GPS_RAW_INT: 
+        mavlink_gps_raw_int_t mavpack;
+
+        mavlink_msg_gps_raw_int_decode(msg, &mavpack);
+        {
+            // set gps hil sensor
+            Location loc;
+            loc.lat = mavpack.lat;
+            loc.lng = mavpack.lon;
+            loc.alt = mavpack.alt;
+
+            Vector3f vel(0,0,0);
+            vel *= 0.01f;
+
+            sub.gps.setHIL(0, AP_GPS::GPS_OK_FIX_3D,
+                       mavpack.time_usec/1000,
+                       loc, vel, mavpack.satellites_visible, mavpack.eph);
+            //AP_GPS::setHIL(uint8_t instance, GPS_Status _status, uint64_t time_epoch_ms, 
+            //       const Location &_location, const Vector3f &_velocity, uint8_t _num_sats, 
+            //       uint16_t hdop)
+        }
+        break;
+
 #if PRECISION_LANDING == ENABLED
     case MAVLINK_MSG_ID_LANDING_TARGET:
         // configure or release parachute

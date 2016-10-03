@@ -243,8 +243,6 @@ void Sub::baldurLoop()
         gcs_send_text(MAV_SEVERITY_INFO,"---");
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "_vel_error_filter = %f",(float)(pos_control._vel_error_filter.get_cutoff_freq())); // 4.0
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "POSCONTROL_THROTTLE_CUTOFF_FREQ = %f",(float)(POSCONTROL_THROTTLE_CUTOFF_FREQ)); // 2.0
-        
-        
     }
 
     #define PRINT_POSZ_VEL_CONTROL 0

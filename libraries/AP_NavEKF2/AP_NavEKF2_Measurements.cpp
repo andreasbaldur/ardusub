@@ -368,6 +368,10 @@ void NavEKF2_core::readGpsData()
     // do not accept data at a faster rate than 14Hz to avoid overflowing the FIFO buffer
     if (_ahrs->get_gps().last_message_time_ms() - lastTimeGpsReceived_ms > 70) {
         if (_ahrs->get_gps().status() >= AP_GPS::GPS_OK_FIX_3D) {
+            // ---
+            //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"last-msg-time: %d", _ahrs->get_gps().last_message_time_ms());
+            // ---
+
             // report GPS fix status
             gpsCheckStatus.bad_fix = false;
 

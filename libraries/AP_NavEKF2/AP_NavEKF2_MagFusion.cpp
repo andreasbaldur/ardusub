@@ -795,18 +795,24 @@ void NavEKF2_core::fuseEulerYaw()
     // Copy raw value to output variable used for data logging
     innovYaw = innovation;
 
-    static int printCnt = 0;
-    if (++printCnt == 20)
+    #define PRINT_MAG   0
+    if(PRINT_MAG)
     {
-        //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"declination: %f",_ahrs->get_compass()->get_declination());    // = 0
-        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"measured_yaw: %f",measured_yaw);
-        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"innovYaw: %f",innovYaw); 
-        // ---
-        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.x: %f",magDataDelayed.mag.x); 
-        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.y: %f",magDataDelayed.mag.y); 
-        Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.z: %f",magDataDelayed.mag.z);
-        printCnt = 0;
+        static int printCnt = 0;
+        if (++printCnt == 20)
+        {
+            //Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"declination: %f",_ahrs->get_compass()->get_declination());    // = 0
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"measured_yaw: %f",measured_yaw);
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"innovYaw: %f",innovYaw); 
+            // ---
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.x: %f",magDataDelayed.mag.x); 
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.y: %f",magDataDelayed.mag.y); 
+            Sub::gcs_send_text_fmt(MAV_SEVERITY_INFO,"mag.z: %f",magDataDelayed.mag.z);
+            printCnt = 0;
+        }
     }
+
+
 
     // Calculate innovation variance and Kalman gains, taking advantage of the fact that only the first 3 elements in H are non zero
     float PH[3];
