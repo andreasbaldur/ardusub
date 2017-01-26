@@ -519,6 +519,8 @@ void AC_PosControl::rate_to_accel_z()
     //Vector3f curr_vel;    // cm/s
     float p;                                // used to capture pid values for logging
 
+    
+
     //curr_vel.z = 1.0;
     //_vel_target.z = 2.0;
 
@@ -575,7 +577,7 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     float z_accel_meas;         // actual acceleration
     float p,i,d;              // used to capture pid values for logging
 
-    // Calculate Earth Frame Z acceleration
+    // Calculate Earth Frame (ef) Z acceleration
     // The *100.0f multiplication is to go from m/s/s to cm/s/s
     z_accel_meas = -(_ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f;
 

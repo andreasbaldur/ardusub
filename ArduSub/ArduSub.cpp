@@ -313,7 +313,13 @@ void Sub::baldurLoop()
         gcs_send_text_fmt(MAV_SEVERITY_INFO, "active_EKF_type() = %d",(int)(ahrs.active_EKF_type()));   // = 2, enum EKF_TYPE {..., EKF_TYPE2=2, ...}
     }
 
-    
+    // ===========================
+    // This is used by the depth controller
+    #define PRINT_INERTIAL_NAVIGATION 0
+    #if PRINT_INERTIAL_NAVIGATION
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "   w = %f",inertial_nav.get_velocity().z);
+    gcs_send_text_fmt(MAV_SEVERITY_INFO, "wdot = %f",-(ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f);
+    #endif
     
 }
 
