@@ -33,6 +33,7 @@ bool Sub::set_mode(control_mode_t mode, mode_reason_t reason)
 
         case STABILIZE:
             success = stabilize_init(ignore_checks);
+            print_flight_mode(cliSerial, STABILIZE);
             break;
 
         case ALT_HOLD:
